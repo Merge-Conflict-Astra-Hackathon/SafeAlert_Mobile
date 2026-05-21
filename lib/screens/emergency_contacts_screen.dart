@@ -339,7 +339,6 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   Widget _buildEmergencyNumber({
     required String title,
     required String number,
-    required IconData icon,
     required Color color,
   }) {
     return Container(
@@ -351,11 +350,6 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.12),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,17 +361,16 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                     fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  number,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                    letterSpacing: 0.4,
-                  ),
-                ),
               ],
+            ),
+          ),
+          Text(
+            number,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+              letterSpacing: 0.4,
             ),
           ),
         ],
@@ -555,21 +548,18 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               _buildEmergencyNumber(
                 title: 'Pemadam Kebakaran',
                 number: '113',
-                icon: Icons.local_fire_department_rounded,
                 color: Colors.red.shade700,
               ),
               const SizedBox(height: 12),
               _buildEmergencyNumber(
                 title: 'Polisi',
                 number: '110',
-                icon: Icons.local_police_rounded,
                 color: Colors.blue.shade700,
               ),
               const SizedBox(height: 12),
               _buildEmergencyNumber(
                 title: 'Ambulans / Medis',
                 number: '118 / 119',
-                icon: Icons.medical_services_rounded,
                 color: Colors.green.shade700,
               ),
               const SizedBox(height: 24),
@@ -642,7 +632,10 @@ class _FloorPlanViewerScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(buildingName),
+        title: Text(
+          buildingName,
+          style: const TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),

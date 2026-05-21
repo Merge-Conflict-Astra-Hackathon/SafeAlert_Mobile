@@ -61,13 +61,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       String fcmToken;
       if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
-        fcmToken = 'mock-fcm-token-web-${DateTime.now().millisecondsSinceEpoch}';
+        fcmToken = '';
       } else {
         try {
-          fcmToken = await FirebaseMessaging.instance.getToken() ??
-              'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
-        } catch (_) {
-          fcmToken = 'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
+          fcmToken = await FirebaseMessaging.instance.getToken() ?? '';
+        } catch (e) {
+          debugPrint('[Firebase] FCM token unavailable: $e');
+          fcmToken = '';
         }
       }
 

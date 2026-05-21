@@ -279,7 +279,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       required String title,
       required String subtitle,
       required Color color,
-      required VoidCallback onPressed,
     }) {
       return Container(
         height: 57,
@@ -288,68 +287,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderRadius: BorderRadius.circular(9),
           border: Border.all(color: cardBorder),
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(9),
-            onTap: onPressed,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 39,
-                    height: 39,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        height: 1.05,
+                      ),
                     ),
-                    child: Icon(
-                      title.contains('113')
-                          ? Icons.local_fire_department_rounded
-                          : title.contains('110')
-                          ? Icons.shield_outlined
-                          : Icons.local_shipping_outlined,
-                      color: Colors.white,
-                      size: 22,
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            height: 1.05,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: color.withValues(alpha: 0.55),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              Text(
+                title.replaceFirst('Hubungi ', ''),
+                style: TextStyle(
+                  color: color,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -583,27 +561,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     title: 'Hubungi 113',
                     subtitle: 'Panggil Petugas Pemadam Kebakaran',
                     color: fireCallColor,
-                    onPressed: () {
-                      // Tambahkan fungsi launchUrl('tel:113') nanti jika package url_launcher dipasang
-                    },
                   ),
                   const SizedBox(height: 10),
                   emergencyCallButton(
                     title: 'Hubungi 110',
                     subtitle: 'Panggil Polisi',
                     color: policeCallColor,
-                    onPressed: () {
-                      // Tambahkan fungsi launchUrl('tel:110') nanti jika package url_launcher dipasang
-                    },
                   ),
                   const SizedBox(height: 10),
                   emergencyCallButton(
                     title: 'Hubungi 118/119',
                     subtitle: 'Panggil Ambulans / Medis',
                     color: medicalCallColor,
-                    onPressed: () {
-                      // Tambahkan fungsi launchUrl('tel:118') nanti jika package url_launcher dipasang
-                    },
                   ),
                 ],
               ),
@@ -958,7 +927,10 @@ class FloorPlanViewerScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(buildingName),
+        title: Text(
+          buildingName,
+          style: const TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
