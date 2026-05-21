@@ -33,7 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadUserData();
     _setupFirebaseMessaging();
-    
+
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _checkAlarm();
     });
@@ -51,7 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final buildingIdText = prefs.getString('building_id') ?? '';
     setState(() {
       _userName = prefs.getString('user_name') ?? 'User';
-      _userFloor = prefs.getString('user_floor') ?? '7'; 
+      _userFloor = prefs.getString('user_floor') ?? '7';
       _adminStatus = prefs.getString('admin_status') ?? 'pending';
       _buildingName = prefs.getString('building_name') ?? '';
       _floorController.text = _userFloor;
@@ -102,14 +102,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (!mounted) return;
 
         String msg = message.data['message'] ?? 'EVAKUASI SEKARANG!';
-        
+
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => AlertScreen(
-              alarmId: alarmId,
-              message: msg,
-            ),
+            builder: (context) => AlertScreen(alarmId: alarmId, message: msg),
           ),
         );
       } else if (message.data['type'] == 'cancel') {
@@ -137,7 +134,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
     _isShowingAlert = false;
   }
-
 
   void _onItemTapped(int index) {
     setState(() {
@@ -170,9 +166,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _userFloor = floor.toString();
         _floorController.text = _userFloor;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'])),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result['message'])));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -206,11 +202,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     const Color primaryColorHex = Color(0xFF282E58);
-    const Color secondaryColorHex = Color(0xFFBED0E5);
+    const Color pageBg = Color(0xFFF6F3EE);
+    const Color cardBg = Color(0xFFFFFEFC);
+    const Color cardBorder = Color(0xFFE8E2D8);
+    const Color safeGreen = Color(0xFF168447);
     const Color fireCallColor = Color(0xFFBA3525); // Warna tombol 113
     const Color policeCallColor = Color(0xFF2545BA); // Warna tombol 110
-    const Color medicalCallColor = Color(0xFF2CBA25); // Warna tombol 118/119
+    const Color medicalCallColor = Color(0xFF20945B); // Warna tombol 118/119
     final bool isVerified = _adminStatus == 'active';
+    final initials = _userName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join();
 
     Widget emergencyCallButton({
       required String title,
@@ -218,39 +224,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
       required Color color,
       required VoidCallback onPressed,
     }) {
-      return ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 2,
+      return Container(
+        height: 57,
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: cardBorder),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(9),
+            onTap: onPressed,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 39,
+                    height: 39,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      title.contains('113')
+                          ? Icons.local_fire_department_rounded
+                          : title.contains('110')
+                          ? Icons.shield_outlined
+                          : Icons.local_shipping_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            height: 1.05,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: color.withValues(alpha: 0.55),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-                fontSize: 13,
-              ),
-            ),
-          ],
+          ),
         ),
+      );
+    }
+
+    Widget sectionLabel(String text) {
+      return Text(
+        text,
+        style: TextStyle(
+          color: Colors.grey.shade500,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+        ),
+      );
+    }
+
+    BoxDecoration softCardDecoration({double radius = 16}) {
+      return BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(10),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       );
     }
 
@@ -259,171 +330,231 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // ==================== TAB 0: BERANDA (SESUAI MOCKUP FOTO KEDUA) ====================
       SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+          padding: const EdgeInsets.fromLTRB(8, 15, 8, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 10),
-              
+              const SizedBox(height: 0),
+
               // ─── CARD STATUS UTAMA (ANDA AMAN) ───
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F0E8),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    )
-                  ],
+                padding: const EdgeInsets.symmetric(
+                  vertical: 26,
+                  horizontal: 16,
                 ),
+                decoration: softCardDecoration(),
                 child: Column(
                   children: [
                     // Lingkaran Ikon Status Aman
                     Container(
-                      padding: const EdgeInsets.all(20),
+                      width: 58,
+                      height: 58,
                       decoration: BoxDecoration(
-                        color: isVerified ? Colors.green.shade50 : Colors.orange.shade50,
+                        color: isVerified
+                            ? const Color(0xFFE7F8EE)
+                            : const Color(0xFFFFF4DF),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isVerified ? Colors.green.shade100 : Colors.orange.shade100,
+                          color: isVerified
+                              ? const Color(0xFFAEEBC7)
+                              : const Color(0xFFFFD48A),
                           width: 2,
                         ),
                       ),
                       child: Icon(
-                        isVerified ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
-                        size: 80,
-                        color: isVerified ? Colors.green.shade600 : Colors.orange.shade700,
+                        isVerified
+                            ? Icons.shield_outlined
+                            : Icons.hourglass_top_rounded,
+                        size: 29,
+                        color: isVerified ? safeGreen : Colors.orange.shade700,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Status Anda:',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 16),
                     Text(
-                      isVerified ? 'ANDA AMAN' : 'MENUNGGU VERIFIKASI',
+                      'STATUS ANDA',
                       style: TextStyle(
-                        fontSize: isVerified ? 26 : 22,
-                        fontWeight: FontWeight.bold,
-                        color: isVerified ? Colors.green.shade700 : Colors.orange.shade800,
-                        letterSpacing: 0.5,
+                        fontSize: 10.5,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
                       ),
                     ),
-                    if (!isVerified) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        'Akun Anda sudah masuk ke daftar verifikasi admin. Fitur pemantauan alarm aktif setelah admin menyetujui akun.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.4,
-                          color: Colors.grey.shade700,
-                        ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isVerified ? 'Anda Aman' : 'Menunggu Verifikasi',
+                      style: TextStyle(
+                        fontSize: isVerified ? 20 : 18,
+                        fontWeight: FontWeight.w800,
+                        color: isVerified ? safeGreen : Colors.orange.shade800,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
-              
-              const SizedBox(height: 32),
-              
-              // ─── INFORMASI USER (RATA KIRI) ───
-              const Text(
-                'Informasi Pengguna',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                  letterSpacing: 0.5,
-                ),
-              ),
+
               const SizedBox(height: 12),
-              Text(
-                'Nama: $_userName',
-                textAlign: TextAlign.left,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColorHex,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Lokasi: Lantai $_userFloor',
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(
-                    isVerified ? Icons.gpp_good_rounded : Icons.pending_actions_rounded,
-                    size: 18,
-                    color: isVerified ? Colors.green.shade600 : Colors.orange.shade700,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    isVerified ? 'Sistem Pemantauan Aktif' : 'Menunggu Verifikasi Admin',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isVerified ? Colors.green.shade600 : Colors.orange.shade700,
-                      fontWeight: FontWeight.w500,
+
+              // ─── INFORMASI USER (RATA KIRI) ───
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 15, 16, 14),
+                decoration: softCardDecoration(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    sectionLabel('INFORMASI PENGGUNA'),
+                    const SizedBox(height: 13),
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEAF0FF),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFC8D6FF)),
+                          ),
+                          child: Center(
+                            child: Text(
+                              initials.isEmpty ? 'U' : initials,
+                              style: const TextStyle(
+                                color: Color(0xFF3156C8),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _userName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: primaryColorHex,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on_outlined,
+                                    size: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Lantai $_userFloor',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isVerified
+                            ? const Color(0xFFE9F8EF)
+                            : const Color(0xFFFFF3DF),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: isVerified
+                              ? const Color(0xFFB8E8C9)
+                              : const Color(0xFFFFD89A),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: isVerified
+                                  ? const Color(0xFF2BBE6A)
+                                  : const Color(0xFFE49B22),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            isVerified
+                                ? 'Sistem Pemantauan Aktif'
+                                : 'Menunggu Verifikasi Admin',
+                            style: TextStyle(
+                              color: isVerified
+                                  ? const Color(0xFF147D45)
+                                  : const Color(0xFF9A5A00),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              
-              const SizedBox(height: 40),
-              
+
+              const SizedBox(height: 12),
+              sectionLabel('KONTAK DARURAT'),
+              const SizedBox(height: 12),
+
               // ─── TOMBOL EMERGENCY CALLS ───
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   emergencyCallButton(
                     title: 'Hubungi 113',
-                    subtitle: '(Panggil Petugas Pemadam Kebakaran)',
+                    subtitle: 'Panggil Petugas Pemadam Kebakaran',
                     color: fireCallColor,
                     onPressed: () {
                       // Tambahkan fungsi launchUrl('tel:113') nanti jika package url_launcher dipasang
                     },
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   emergencyCallButton(
                     title: 'Hubungi 110',
-                    subtitle: '(Panggil Polisi)',
+                    subtitle: 'Panggil Polisi',
                     color: policeCallColor,
                     onPressed: () {
                       // Tambahkan fungsi launchUrl('tel:110') nanti jika package url_launcher dipasang
                     },
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   emergencyCallButton(
                     title: 'Hubungi 118/119',
-                    subtitle: '(Panggil Ambulans/Medis)',
+                    subtitle: 'Panggil Ambulans / Medis',
                     color: medicalCallColor,
                     onPressed: () {
                       // Tambahkan fungsi launchUrl('tel:118') nanti jika package url_launcher dipasang
                     },
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
       ),
-      
+
       SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
@@ -466,7 +597,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 clipBehavior: Clip.antiAlias,
                 child: _floorPlanUrl.isEmpty
                     ? Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 36),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 36,
+                        ),
                         child: Column(
                           children: [
                             Icon(
@@ -507,14 +641,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: Image.network(
                                 _floorPlanUrl,
                                 fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return const Center(
-                                    child: CircularProgressIndicator(
-                                      color: primaryColorHex,
-                                    ),
-                                  );
-                                },
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return const Center(
+                                        child: CircularProgressIndicator(
+                                          color: primaryColorHex,
+                                        ),
+                                      );
+                                    },
                                 errorBuilder: (context, error, stackTrace) {
                                   return Center(
                                     child: Padding(
@@ -548,7 +683,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.fullscreen_rounded, color: primaryColorHex),
+                                  Icon(
+                                    Icons.fullscreen_rounded,
+                                    color: primaryColorHex,
+                                  ),
                                   SizedBox(width: 8),
                                   Text(
                                     'Ketuk denah untuk layar penuh',
@@ -631,7 +769,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'Nomor lantai',
-                        prefixIcon: Icon(Icons.business_outlined, color: primaryColorHex),
+                        prefixIcon: Icon(
+                          Icons.business_outlined,
+                          color: primaryColorHex,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -686,10 +827,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0E8), // Background selaras dengan web admin
+      backgroundColor: pageBg,
       // appBar dihapus sepenuhnya agar bagian atas bersih tanpa teks & tombol logout
       body: pages[_selectedIndex],
-      
+
       // BOTTOM NAVIGATION BAR
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -707,9 +848,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
-            backgroundColor: const Color(0xFFF5F0E8),
-            selectedItemColor: primaryColorHex,
-            unselectedItemColor: secondaryColorHex,
+            backgroundColor: cardBg,
+            selectedItemColor: const Color(0xFF3156C8),
+            unselectedItemColor: Colors.grey.shade400,
             type: BottomNavigationBarType.fixed,
             enableFeedback: false,
             selectedLabelStyle: const TextStyle(
@@ -727,7 +868,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: 'Beranda',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.directions_run_rounded), 
+                icon: Icon(Icons.directions_run_rounded),
                 label: 'Evakuasi',
               ),
               BottomNavigationBarItem(

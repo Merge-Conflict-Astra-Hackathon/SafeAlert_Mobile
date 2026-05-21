@@ -15,7 +15,9 @@ class ApiService {
   }
 
   static String resolveAssetUrl(String url) {
-    if (url.isEmpty || url.startsWith('http://') || url.startsWith('https://')) {
+    if (url.isEmpty ||
+        url.startsWith('http://') ||
+        url.startsWith('https://')) {
       return url;
     }
 
@@ -60,10 +62,10 @@ class ApiService {
   Future<Set<int>> _respondedAlarmIds() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs
-        .getStringList('responded_alarm_ids')
-        ?.map(int.tryParse)
-        .whereType<int>()
-        .toSet() ??
+            .getStringList('responded_alarm_ids')
+            ?.map(int.tryParse)
+            .whereType<int>()
+            .toSet() ??
         <int>{};
   }
 
@@ -94,14 +96,20 @@ class ApiService {
       (data['admin_status'] ?? 'pending').toString(),
     );
     await prefs.setString('user_floor', (data['floor'] ?? '').toString());
-    await prefs.setString('building_id', (data['building_id'] ?? '').toString());
+    await prefs.setString(
+      'building_id',
+      (data['building_id'] ?? '').toString(),
+    );
     await prefs.setString(
       'building_name',
       (data['building_name'] ?? '').toString(),
     );
 
     if (tokens != null) {
-      await prefs.setString('access_token', (tokens['access'] ?? '').toString());
+      await prefs.setString(
+        'access_token',
+        (tokens['access'] ?? '').toString(),
+      );
       await prefs.setString(
         'refresh_token',
         (tokens['refresh'] ?? '').toString(),
@@ -231,7 +239,8 @@ class ApiService {
 
       return {
         'success': false,
-        'message': responseData['error'] ??
+        'message':
+            responseData['error'] ??
             responseData['message'] ??
             'Terjadi kesalahan',
       };
@@ -251,16 +260,15 @@ class ApiService {
         final alerts = jsonDecode(response.body) as List<dynamic>;
         if (alerts.isEmpty) return null;
         final respondedIds = await _respondedAlarmIds();
-        final alert = alerts
-            .whereType<Map<String, dynamic>>()
-            .firstWhere(
-              (alert) => !respondedIds.contains(alert['id'] as int),
-              orElse: () => <String, dynamic>{},
-            );
+        final alert = alerts.whereType<Map<String, dynamic>>().firstWhere(
+          (alert) => !respondedIds.contains(alert['id'] as int),
+          orElse: () => <String, dynamic>{},
+        );
         if (alert.isEmpty) return null;
         return {
           'id': alert['id'],
-          'message': alert['description'] ?? alert['title'] ?? 'EVAKUASI SEKARANG!',
+          'message':
+              alert['description'] ?? alert['title'] ?? 'EVAKUASI SEKARANG!',
         };
       }
     } catch (_) {
@@ -283,7 +291,8 @@ class ApiService {
         return {
           'success': true,
           'data': responseData['data'],
-          'message': responseData['message'] ?? 'Nomor lantai berhasil diperbarui.',
+          'message':
+              responseData['message'] ?? 'Nomor lantai berhasil diperbarui.',
         };
       }
 
