@@ -125,10 +125,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.notifications_active_rounded, 
-                  size: 80,
-                  color: accentColorHex, 
+                Image.asset(
+                  'assets/images/safealert-logo.png',
+                  width: 96,
+                  height: 112,
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 16),
                 const Row(
