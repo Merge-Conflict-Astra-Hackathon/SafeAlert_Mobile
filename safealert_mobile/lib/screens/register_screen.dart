@@ -19,14 +19,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _name = '';
   String _phone = '';
   String _password = ''; // Variabel baru untuk menampung password register
+  int? _buildingId;
   int _floor = 1;
   String _disabilityType = 'none';
   bool _obscurePassword = true; // State toggle pengingat password aman
   bool _isLoading = false;
+  bool _isLoadingBuildings = true;
+  List<Map<String, dynamic>> _buildings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBuildings();
+  }
+
+  Future<void> _loadBuildings() async {
+    final buildings = await _apiService.getBuildings();
+    if (!mounted) return;
+    setState(() {
+      _buildings = buildings;
+      _buildingId = buildings.isNotEmpty ? buildings.first['id'] as int? : null;
+      _isLoadingBuildings = false;
+    });
+  }
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+      if (_buildingId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pilih gedung terlebih dahulu.'),
+            backgroundColor: Color(0xFFDC1010),
+          ),
+        );
+        return;
+      }
       setState(() {
         _isLoading = true;
       });
@@ -47,6 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         name: _name,
         phone: _phone,
         password: _password,
+        buildingId: _buildingId!,
         floor: _floor,
         disabilityType: _disabilityType,
         fcmToken: fcmToken,
@@ -163,8 +192,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               prefixIcon: Icon(Icons.person_outline, color: primaryColorHex),
                             ),
                             style: const TextStyle(color: primaryColorHex),
-                            validator: (val) => val == null || val.isEmpty ? 'Wajib diisi' : null,
-                            onSaved: (val) => _name = val!,
+                            validator: (val) => val == null || val.trim().isEmpty ? 'Wajib diisi' : null,
+                            onSaved: (val) => _name = val!.trim(),
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
@@ -174,11 +203,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             style: const TextStyle(color: primaryColorHex),
                             keyboardType: TextInputType.phone,
-                            validator: (val) => val == null || val.isEmpty ? 'Wajib diisi' : null,
-                            onSaved: (val) => _phone = val!,
+                            validator: (val) => val == null || val.trim().isEmpty ? 'Wajib diisi' : null,
+                            onSaved: (val) => _phone = val!.trim(),
                           ),
                           const SizedBox(height: 16),
-                          // 👇 INPUT TEXTFORMFIELD PASSWORD BARU 👇
+                          DropdownButtonFormField<int>(
+                            key: ValueKey(_buildingId),
+                            decoration: const InputDecoration(
+                              labelText: 'Gedung',
+                              prefixIcon: Icon(Icons.apartment_rounded, color: primaryColorHex),
+                            ),
+                            dropdownColor: Colors.white,
+                            style: const TextStyle(color: primaryColorHex, fontSize: 16),
+                            initialValue: _buildingId,
+                            items: _buildings
+                                .map(
+                                  (building) => DropdownMenuItem<int>(
+                                    value: building['id'] as int,
+                                    child: Text((building['name'] ?? 'Gedung').toString()),
+                                  ),
+                                )
+                                .toList(),
+                            validator: (val) => val == null ? 'Gedung wajib dipilih' : null,
+                            onChanged: _isLoadingBuildings
+                                ? null
+                                : (val) {
+                                    setState(() {
+                                      _buildingId = val;
+                                    });
+                                  },
+                            onSaved: (val) => _buildingId = val,
+                          ),
+                          if (!_isLoadingBuildings && _buildings.isEmpty) ...[
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Belum ada data gedung. Tambahkan gedung dari web admin dulu.',
+                              style: TextStyle(color: accentColorHex, fontSize: 12),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
                           TextFormField(
                             obscureText: _obscurePassword,
                             decoration: InputDecoration(
@@ -198,11 +261,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             style: const TextStyle(color: primaryColorHex),
                             validator: (val) {
-                              if (val == null || val.isEmpty) return 'Password wajib diisi';
-                              if (val.length < 6) return 'Password minimal 6 karakter';
+                              final password = val?.trim() ?? '';
+                              if (password.isEmpty) return 'Password wajib diisi';
+                              if (password.length < 6) return 'Password minimal 6 karakter';
                               return null;
                             },
-                            onSaved: (val) => _password = val!,
+                            onSaved: (val) => _password = val!.trim(),
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
@@ -214,11 +278,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             keyboardType: TextInputType.number,
                             initialValue: '1',
                             validator: (val) {
-                              if (val == null || val.isEmpty) return 'Wajib diisi';
-                              if (int.tryParse(val) == null) return 'Harus berupa angka';
+                              final floor = val?.trim() ?? '';
+                              if (floor.isEmpty) return 'Wajib diisi';
+                              if (int.tryParse(floor) == null) return 'Harus berupa angka';
                               return null;
                             },
-                            onSaved: (val) => _floor = int.parse(val!),
+                            onSaved: (val) => _floor = int.parse(val!.trim()),
                           ),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(

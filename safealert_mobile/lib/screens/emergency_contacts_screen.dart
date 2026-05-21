@@ -16,7 +16,8 @@ class EmergencyContactsScreen extends StatefulWidget {
   });
 
   @override
-  State<EmergencyContactsScreen> createState() => _EmergencyContactsScreenState();
+  State<EmergencyContactsScreen> createState() =>
+      _EmergencyContactsScreenState();
 }
 
 class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
@@ -59,7 +60,9 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         _isSubmitting = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User ID tidak ditemukan. Silakan login ulang.')),
+        const SnackBar(
+          content: Text('User ID tidak ditemukan. Silakan login ulang.'),
+        ),
       );
       return;
     }
@@ -88,7 +91,9 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               ? 'Status berhasil diperbarui.'
               : result['message'] ?? 'Gagal memperbarui status.',
         ),
-        backgroundColor: result['success'] ? Colors.green.shade700 : Colors.red.shade700,
+        backgroundColor: result['success']
+            ? Colors.green.shade700
+            : Colors.red.shade700,
       ),
     );
   }
@@ -312,7 +317,10 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -333,7 +341,12 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     );
   }
 
-  Widget _buildStatusButton(String title, String status, Color color, IconData icon) {
+  Widget _buildStatusButton(
+    String title,
+    String status,
+    Color color,
+    IconData icon,
+  ) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -348,7 +361,9 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
           backgroundColor: color,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 15),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );
@@ -393,7 +408,11 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.image_not_supported_outlined, size: 54, color: Colors.grey.shade500),
+                Icon(
+                  Icons.image_not_supported_outlined,
+                  size: 54,
+                  color: Colors.grey.shade500,
+                ),
                 const SizedBox(height: 10),
                 Text(
                   'Foto denah belum tersedia',
@@ -422,12 +441,6 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCFC),
-      appBar: AppBar(
-        title: const Text('Nomor Darurat'),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -445,7 +458,11 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 44),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.red.shade700,
+                      size: 44,
+                    ),
                     const SizedBox(height: 10),
                     const Text(
                       'Tetap Pantau Instruksi',
@@ -454,12 +471,6 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                         fontWeight: FontWeight.bold,
                         color: primaryColor,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.message,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(height: 1.4, color: Colors.black87),
                     ),
                   ],
                 ),
@@ -498,15 +509,32 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               ),
               const SizedBox(height: 12),
               if (_isSubmitting)
-                const Center(child: CircularProgressIndicator(color: primaryColor)),
+                const Center(
+                  child: CircularProgressIndicator(color: primaryColor),
+                ),
               if (!_isSubmitting)
                 Column(
                   children: [
-                    _buildStatusButton('Aman', 'safe', Colors.green.shade700, Icons.check_circle_outline),
+                    _buildStatusButton(
+                      'Aman',
+                      'safe',
+                      Colors.green.shade700,
+                      Icons.check_circle_outline,
+                    ),
                     const SizedBox(height: 10),
-                    _buildStatusButton('Evakuasi', 'evacuating', Colors.orange.shade800, Icons.directions_run_rounded),
+                    _buildStatusButton(
+                      'Evakuasi',
+                      'evacuating',
+                      Colors.orange.shade800,
+                      Icons.directions_run_rounded,
+                    ),
                     const SizedBox(height: 10),
-                    _buildStatusButton('Terjebak', 'trapped', Colors.black, Icons.error_outline),
+                    _buildStatusButton(
+                      'Terjebak',
+                      'trapped',
+                      Colors.black,
+                      Icons.error_outline,
+                    ),
                   ],
                 ),
             ],
@@ -521,8 +549,5 @@ class _EmergencyReport {
   final String location;
   final String notes;
 
-  const _EmergencyReport({
-    required this.location,
-    required this.notes,
-  });
+  const _EmergencyReport({required this.location, required this.notes});
 }

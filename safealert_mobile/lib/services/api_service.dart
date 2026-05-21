@@ -36,6 +36,18 @@ class ApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  List<Map<String, dynamic>> _decodeListResponse(http.Response response) {
+    if (response.body.isEmpty) return [];
+    final decoded = jsonDecode(response.body);
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    }
+    return [];
+  }
+
   Future<Set<int>> _respondedAlarmIds() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs
@@ -73,6 +85,11 @@ class ApiService {
       (data['admin_status'] ?? 'pending').toString(),
     );
     await prefs.setString('user_floor', (data['floor'] ?? '').toString());
+    await prefs.setString('building_id', (data['building_id'] ?? '').toString());
+    await prefs.setString(
+      'building_name',
+      (data['building_name'] ?? '').toString(),
+    );
 
     if (tokens != null) {
       await prefs.setString('access_token', (tokens['access'] ?? '').toString());
@@ -87,6 +104,7 @@ class ApiService {
     required String name,
     required String phone,
     required String password,
+    required int buildingId,
     required int floor,
     required String disabilityType,
     required String fcmToken,
@@ -99,6 +117,7 @@ class ApiService {
           'name': name,
           'phone': phone,
           'password': password,
+          'building_id': buildingId,
           'floor': floor,
           'disability_type': disabilityType,
           'fcm_token': fcmToken,
@@ -121,6 +140,21 @@ class ApiService {
       };
     } catch (e) {
       return {'success': false, 'message': 'Gagal terhubung ke server: $e'};
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getBuildings() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/buildings/'),
+        headers: await _headers(),
+      );
+      if (response.statusCode == 200) {
+        return _decodeListResponse(response);
+      }
+      return [];
+    } catch (_) {
+      return [];
     }
   }
 

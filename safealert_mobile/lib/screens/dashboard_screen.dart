@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
-import 'alert_screen.dart'; 
+import 'alert_screen.dart';
+import 'login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -141,12 +142,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    _pollingTimer?.cancel();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_id');
+    await prefs.remove('user_name');
+    await prefs.remove('admin_status');
+    await prefs.remove('user_floor');
+    await prefs.remove('building_id');
+    await prefs.remove('building_name');
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color primaryColorHex = Color(0xFF282E58);
+    const Color secondaryColorHex = Color(0xFFBED0E5);
     const Color fireCallColor = Color(0xFFBA3525); // Warna tombol 113
     const Color policeCallColor = Color(0xFF2545BA); // Warna tombol 110
+    const Color medicalCallColor = Color(0xFF2CBA25); // Warna tombol 118/119
     final bool isVerified = _adminStatus == 'active';
+
+    Widget emergencyCallButton({
+      required String title,
+      required String subtitle,
+      required Color color,
+      required VoidCallback onPressed,
+    }) {
+      return ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 2,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 20,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     // 1. DAFTAR LAYOUT HALAMAN INTERNAL
     final List<Widget> pages = [
@@ -282,51 +347,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 40),
               
               // ─── TOMBOL EMERGENCY CALLS ───
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Tombol Pemadam Kebakaran (113)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Tambahkan fungsi launchUrl('tel:113') nanti jika package url_launcher dipasang
-                      },
-                      icon: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 22),
-                      label: const Text(
-                        'Panggil 113\n(Pemadam)',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: fireCallColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 2,
-                      ),
-                    ),
+                  emergencyCallButton(
+                    title: 'Hubungi 113',
+                    subtitle: '(Panggil Petugas Pemadam Kebakaran)',
+                    color: fireCallColor,
+                    onPressed: () {
+                      // Tambahkan fungsi launchUrl('tel:113') nanti jika package url_launcher dipasang
+                    },
                   ),
-                  const SizedBox(width: 16),
-                  // Tombol Kepolisian (110)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Tambahkan fungsi launchUrl('tel:110')
-                      },
-                      icon: const Icon(Icons.local_police_rounded, color: Colors.white, size: 22),
-                      label: const Text(
-                        'Panggil 110\n(Polisi)',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: policeCallColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 2,
-                      ),
-                    ),
+                  const SizedBox(height: 12),
+                  emergencyCallButton(
+                    title: 'Hubungi 110',
+                    subtitle: '(Panggil Polisi)',
+                    color: policeCallColor,
+                    onPressed: () {
+                      // Tambahkan fungsi launchUrl('tel:110') nanti jika package url_launcher dipasang
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  emergencyCallButton(
+                    title: 'Hubungi 118/119',
+                    subtitle: '(Panggil Ambulans/Medis)',
+                    color: medicalCallColor,
+                    onPressed: () {
+                      // Tambahkan fungsi launchUrl('tel:118') nanti jika package url_launcher dipasang
+                    },
                   ),
                 ],
-              ),
+              )
             ],
           ),
         ),
@@ -428,6 +479,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: _logout,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFDC1010),
+                  side: const BorderSide(color: Color(0xFFDC1010)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -446,37 +514,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: BorderSide(color: Colors.grey.shade200, width: 1.5),
           ),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          backgroundColor: Colors.white,
-          selectedItemColor: primaryColorHex,
-          unselectedItemColor: Colors.grey.shade500,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            splashFactory: NoSplash.splashFactory,
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.normal,
-            fontSize: 12,
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            backgroundColor: Colors.white,
+            selectedItemColor: primaryColorHex,
+            unselectedItemColor: secondaryColorHex,
+            type: BottomNavigationBarType.fixed,
+            enableFeedback: false,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.normal,
+              fontSize: 12,
+            ),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home_rounded),
+                label: 'Beranda',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.directions_run_rounded), 
+                label: 'Evakuasi',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline_rounded),
+                activeIcon: Icon(Icons.person_rounded),
+                label: 'Profil',
+              ),
+            ],
           ),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Beranda',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.directions_run_rounded), 
-              label: 'Evakuasi',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profil',
-            ),
-          ],
         ),
       ),
     );
