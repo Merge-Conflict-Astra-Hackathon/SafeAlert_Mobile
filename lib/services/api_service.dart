@@ -60,12 +60,25 @@ class ApiService {
   }
 
   Future<void> markAlarmResponded(int alarmId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('responded_alarm_ids');
+    await resetAlarmSession();
   }
 
   Future<bool> hasRespondedToAlarm(int alarmId) async {
     return false;
+  }
+
+  Future<void> rememberActiveAlarm(int alarmId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('responded_alarm_ids');
+    await prefs.setInt('current_alarm_id', alarmId);
+  }
+
+  Future<void> resetAlarmSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('responded_alarm_ids');
+    await prefs.remove('current_alarm_id');
+    await prefs.remove('current_alarm_message');
+    await prefs.remove('alarm_session_token');
   }
 
   Future<void> _saveSession(Map<String, dynamic> responseData) async {
@@ -282,12 +295,16 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final alerts = jsonDecode(response.body) as List<dynamic>;
-        if (alerts.isEmpty) return null;
+        if (alerts.isEmpty) {
+          await resetAlarmSession();
+          return null;
+        }
         final alert = alerts.whereType<Map<String, dynamic>>().firstWhere(
           (alert) => true,
           orElse: () => <String, dynamic>{},
         );
         if (alert.isEmpty) return null;
+        await rememberActiveAlarm(alert['id'] as int);
         return {
           'id': alert['id'],
           'message':
@@ -298,6 +315,26 @@ class ApiService {
       return null;
     }
     return null;
+  }
+
+  Future<bool> isAlarmActive(int alarmId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/alerts/$alarmId/'),
+        headers: await _headers(withAuth: true),
+      );
+
+      if (response.statusCode != 200) return false;
+
+      final alert = _decodeResponse(response);
+      final isActive = (alert['status'] ?? '').toString() == 'active';
+      if (!isActive) {
+        await resetAlarmSession();
+      }
+      return isActive;
+    } catch (_) {
+      return true;
+    }
   }
 
   Future<Map<String, dynamic>> updateFloor({required int floor}) async {

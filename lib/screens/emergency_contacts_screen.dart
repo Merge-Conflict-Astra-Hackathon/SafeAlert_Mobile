@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
+import 'dashboard_screen.dart';
 
 class EmergencyContactsScreen extends StatefulWidget {
   final int alarmId;
@@ -27,6 +30,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   String _currentStatusKey = 'no_response';
   String _buildingName = '';
   String _floorPlanUrl = '';
+  Timer? _alarmStatusTimer;
 
   @override
   void initState() {
@@ -34,6 +38,29 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     _currentStatusKey = _normalizeStatus(widget.initialStatus);
     _currentStatus = _statusLabel(_currentStatusKey);
     _loadFloorPlan();
+    _alarmStatusTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _returnHomeIfAlarmInactive();
+    });
+  }
+
+  @override
+  void dispose() {
+    _alarmStatusTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _returnHomeIfAlarmInactive() async {
+    final isActive = await _apiService.isAlarmActive(widget.alarmId);
+    if (isActive || !mounted) return;
+
+    _alarmStatusTimer?.cancel();
+    await _apiService.resetAlarmSession();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      (route) => false,
+    );
   }
 
   Future<void> _loadFloorPlan() async {

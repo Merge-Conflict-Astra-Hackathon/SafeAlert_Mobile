@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/alert_device_service.dart';
 import '../services/api_service.dart';
+import 'dashboard_screen.dart';
 import 'emergency_contacts_screen.dart';
 
 class AlertScreen extends StatefulWidget {
@@ -21,6 +24,7 @@ class _AlertScreenState extends State<AlertScreen>
   bool _isLoading = false;
   bool _isConfirmed = false;
   bool _isAlertModeActive = false;
+  Timer? _alarmStatusTimer;
   late AnimationController _animationController;
 
   @override
@@ -31,13 +35,32 @@ class _AlertScreenState extends State<AlertScreen>
       duration: const Duration(milliseconds: 500),
     )..repeat(reverse: true);
     _activateAlertMode();
+    _alarmStatusTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _closeIfAlarmInactive();
+    });
   }
 
   @override
   void dispose() {
+    _alarmStatusTimer?.cancel();
     _animationController.dispose();
     _restoreAlertMode();
     super.dispose();
+  }
+
+  Future<void> _closeIfAlarmInactive() async {
+    final isActive = await _apiService.isAlarmActive(widget.alarmId);
+    if (isActive || !mounted) return;
+
+    _alarmStatusTimer?.cancel();
+    await _restoreAlertMode();
+    await _apiService.resetAlarmSession();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      (route) => false,
+    );
   }
 
   Future<void> _activateAlertMode() async {

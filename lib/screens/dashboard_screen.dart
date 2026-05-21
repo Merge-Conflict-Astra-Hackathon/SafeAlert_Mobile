@@ -157,6 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final msg = message.data['message'] ?? 'EVAKUASI SEKARANG!';
 
       if (_isShowingAlert) return;
+      await _apiService.rememberActiveAlarm(alarmId);
       _isShowingAlert = true;
       await Navigator.push(
         context,
@@ -166,6 +167,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
       _isShowingAlert = false;
     } else if (message.data['type'] == 'cancel') {
+      await _apiService.resetAlarmSession();
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
