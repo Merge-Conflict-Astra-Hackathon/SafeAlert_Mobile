@@ -249,7 +249,7 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
               const SizedBox(height: 24),
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                color: Colors.white,
+                color: const Color(0xFFF5F0E8),
                 elevation: 8,
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -300,7 +300,7 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: const Color(0xFFF5F0E8).withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -349,7 +349,7 @@ class _TrappedInputScreen extends StatelessWidget {
     const dangerColor = Color(0xFFB71C1C);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFC),
+      backgroundColor: const Color(0xFFF5F0E8),
       appBar: AppBar(
         title: const Text('Laporkan Lokasi'),
         backgroundColor: dangerColor,

@@ -117,7 +117,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     const Color accentColorHex = Color(0xFFDC1010);  
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFC), 
+      backgroundColor: const Color(0xFFF5F0E8), 
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -159,12 +159,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: primaryColorHex.withOpacity(0.7),
+                    color: primaryColorHex.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 32),
                 Card(
                   elevation: 0, 
+                  color: const Color(0xFFF5F0E8),
                   shape: RoundedRectangleBorder(
                     side: BorderSide(color: Colors.grey.shade200, width: 1.5),
                     borderRadius: BorderRadius.circular(16),
@@ -213,7 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               labelText: 'Gedung',
                               prefixIcon: Icon(Icons.apartment_rounded, color: primaryColorHex),
                             ),
-                            dropdownColor: Colors.white,
+                            dropdownColor: const Color(0xFFF5F0E8),
                             style: const TextStyle(color: primaryColorHex, fontSize: 16),
                             initialValue: _buildingId,
                             items: _buildings
@@ -250,7 +251,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                  color: primaryColorHex.withOpacity(0.6),
+                                  color: primaryColorHex.withValues(alpha: 0.6),
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -291,7 +292,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               labelText: 'Jenis Disabilitas (Bantuan Khusus)',
                               prefixIcon: Icon(Icons.accessible_forward, color: primaryColorHex),
                             ),
-                            dropdownColor: Colors.white,
+                            dropdownColor: const Color(0xFFF5F0E8),
                             style: const TextStyle(color: primaryColorHex, fontSize: 16),
                             initialValue: _disabilityType,
                             items: const [
@@ -330,7 +331,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             children: [
                               Text(
                                 'Sudah punya akun? ',
-                                style: TextStyle(color: primaryColorHex.withOpacity(0.6)),
+                                style: TextStyle(color: primaryColorHex.withValues(alpha: 0.6)),
                               ),
                               GestureDetector(
                                 onTap: () {

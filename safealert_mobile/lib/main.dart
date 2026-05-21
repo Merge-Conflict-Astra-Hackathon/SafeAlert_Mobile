@@ -38,7 +38,7 @@ class SafeAlertApp extends StatelessWidget {
     const Color primaryColorHex = Color(0xFF282E58);
     const Color secondaryColorHex = Color(0xFFBED0E5);
     const Color accentColorHex = Color(0xFFDC1010);
-    const Color backgroundColorHex = Color(0xFFFCFCFC);
+    const Color backgroundColorHex = Color(0xFFF5F0E8);
 
     return MaterialApp(
       title: 'SafeAlert',
@@ -55,7 +55,7 @@ class SafeAlertApp extends StatelessWidget {
           error: accentColorHex,
         ),
         
-        // Menyesuaikan AppBar dengan warna background utama (#FCFCFC) dan teks gelap (#282E58)
+        // Menyesuaikan AppBar dengan warna background utama (#F5F0E8) dan teks gelap (#282E58)
         appBarTheme: const AppBarTheme(
           backgroundColor: backgroundColorHex,
           foregroundColor: primaryColorHex, 
@@ -92,7 +92,7 @@ class SafeAlertApp extends StatelessWidget {
         // Pengaturan desain Input Form (Text Field)
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
+          fillColor: const Color(0xFFF5F0E8),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.grey.shade300),

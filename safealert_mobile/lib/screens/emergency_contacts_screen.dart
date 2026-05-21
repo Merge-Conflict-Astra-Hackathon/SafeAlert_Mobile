@@ -201,7 +201,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     final report = await showModalBottomSheet<_EmergencyReport>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F0E8),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -300,7 +300,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F0E8),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -373,7 +373,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F0E8),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -440,7 +440,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     const primaryColor = Color(0xFF282E58);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFC),
+      backgroundColor: const Color(0xFFF5F0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

@@ -60,6 +60,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (message.data['type'] == 'emergency') {
         int alarmId = int.tryParse(message.data['alarm_id'] ?? '') ?? 1;
         if (await _apiService.hasRespondedToAlarm(alarmId)) return;
+        if (!mounted) return;
+
         String msg = message.data['message'] ?? 'EVAKUASI SEKARANG!';
         
         Navigator.push(
@@ -228,7 +230,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFFF5F0E8),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
@@ -412,7 +414,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFFF5F0E8),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.grey.shade200),
                   boxShadow: [
@@ -503,7 +505,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50, // Latar belakang abu-abu terang bersih mewah
+      backgroundColor: const Color(0xFFF5F0E8), // Background selaras dengan web admin
       // appBar dihapus sepenuhnya agar bagian atas bersih tanpa teks & tombol logout
       body: pages[_selectedIndex],
       
@@ -524,7 +526,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
-            backgroundColor: Colors.white,
+            backgroundColor: const Color(0xFFF5F0E8),
             selectedItemColor: primaryColorHex,
             unselectedItemColor: secondaryColorHex,
             type: BottomNavigationBarType.fixed,
