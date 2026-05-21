@@ -1,0 +1,50 @@
+# Implementation Plan - Polishing the SafeAlert Front-end Dashboard
+
+This plan addresses the critical visual bugs and styling flaws discovered in the SafeAlert Web Admin Dashboard during visual verification, bringing it to a premium, production-grade standard that aligns with Astra Hackathon and Google DeepMind guidelines.
+
+## Visual & Functional Issues to Solve
+
+1. **Content Wrapping and Blank Space Offset (Critical Layout Flaw)**:
+   - *Problem*: The dashboard content is wrapped to the next line beneath the sidebar because the columns exceed 12 (`col-md-3` + `offset-md-3` + `col-md-9` = 15). This pushes the main content down by ~600px, leaving a massive empty black area.
+   - *Solution*: Re-architect `base.html` to use a professional **fixed sidebar layout**. This guarantees that the sidebar remains static on the left and the content flows naturally on the right, removing grid wrapping issues and making it feel like a premium single-page application.
+
+2. **White-on-White Contrast Issue in Tables (Critical Contrast Flaw)**:
+   - *Problem*: Bootstrap 5 sets a default white background on table rows. Since key text elements (names, messages) inherit the primary body color (white), the text becomes invisible on the white table backgrounds.
+   - *Solution*: Override Bootstrap's default table styles in `base.html` for `.custom-table` to ensure transparent/glassmorphic backgrounds (`background: transparent !important;`) and high-contrast white text (`color: var(--text-main) !important;`) for both table headers and cells.
+
+3. **Subtle Micro-Animations**:
+   - Add responsive hover states and pulsing warning triggers for active alarms to make the dashboard feel alive.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> The admin credentials seeded for testing are:
+> - **Username**: `admin_gedung`
+> - **Password**: `password123`
+
+---
+
+## Proposed Changes
+
+### [Web Front-end Dashboard]
+
+#### [MODIFY] [base.html](file:///c:/Users/Wildan/Kuliah/Lomba/AstraHackathon/Simulasi_Hackathon_Astra/safealert_backend/dashboard/templates/dashboard/base.html)
+
+- Convert sidebar to `position: fixed` with a width of `280px`.
+- Wrap content column in a wrapper with `margin-left: 280px` (on desktop) to ensure they sit perfectly side-by-side without grid offsets.
+- Add CSS rules for `.custom-table` to eliminate default light backgrounds and force visible text.
+- Optimize live clock layout and active navbar item hover transitions.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Restart the Django dev server.
+- Run `verify_safealert.py` to confirm all API endpoints are unaffected.
+- Launch a new browser session via the browser subagent to:
+  1. Log in.
+  2. Take screenshots of each tab (Index, Verifikasi, Daftar User, Alarm Console) and verify the spacing and contrast are flawless.
+  3. Validate that the status change AJAX dropdown behaves responsively.
