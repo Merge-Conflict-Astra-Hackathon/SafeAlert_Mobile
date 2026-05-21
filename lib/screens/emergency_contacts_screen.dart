@@ -348,24 +348,19 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
+          Text(
+            title,
+            textAlign: TextAlign.left,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
+          const SizedBox(height: 4),
           Text(
             number,
+            textAlign: TextAlign.left,
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w900,
