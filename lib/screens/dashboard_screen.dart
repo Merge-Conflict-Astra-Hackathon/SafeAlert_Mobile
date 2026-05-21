@@ -158,6 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (_isShowingAlert) return;
       await _apiService.rememberActiveAlarm(alarmId);
+      if (!mounted) return;
       _isShowingAlert = true;
       await Navigator.push(
         context,
