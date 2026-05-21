@@ -15,6 +15,7 @@ class ApiService {
   Future<Map<String, dynamic>> registerUser({
     required String name,
     required String phone,
+    required String password,
     required int floor,
     required String disabilityType,
     required String fcmToken,
@@ -26,6 +27,7 @@ class ApiService {
       body: jsonEncode({
         'name': name,
         'phone': phone,
+        'password': password,
         'floor': floor,
         'disability_type': disabilityType,
         'fcm_token': fcmToken,
@@ -37,7 +39,10 @@ class ApiService {
       return {'success': true, 'data': data};
     } else {
       final data = jsonDecode(response.body);
-      return {'success': false, 'message': data['message'] ?? 'Terjadi kesalahan'};
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Terjadi kesalahan',
+      };
     }
   }
 
@@ -61,7 +66,10 @@ class ApiService {
       return {'success': true};
     } else {
       final data = jsonDecode(response.body);
-      return {'success': false, 'message': data['message'] ?? 'Terjadi kesalahan'};
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Terjadi kesalahan',
+      };
     }
   }
 
@@ -81,5 +89,46 @@ class ApiService {
       // Ignore
     }
     return null;
+  }
+
+  Future<Map<String, dynamic>> loginUser({
+    required String phone,
+    required String password,
+    required String fcmToken,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '$baseUrl/login',
+        ), // Sesuaikan dengan endpoint login dari backend/web kalian
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'phone': phone,
+          'fcm_token':
+              fcmToken, // Dikirim ulang agar jika ganti HP, token di DB ikut terupdate
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': responseData['data'] ?? responseData,
+          'message': 'Login berhasil',
+        };
+      } else {
+        return {
+          'success': false,
+          'message':
+              responseData['message'] ?? 'Nomor HP tidak terdaftar atau salah.',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server: $e'};
+    }
   }
 }

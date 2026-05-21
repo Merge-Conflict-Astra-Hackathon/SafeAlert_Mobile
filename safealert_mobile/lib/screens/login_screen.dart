@@ -4,84 +4,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
 import 'dashboard_screen.dart';
-import 'login_screen.dart'; 
+import 'register_screen.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
 
-  String _name = '';
   String _phone = '';
-  String _password = ''; // Variabel baru untuk menampung password register
-  int _floor = 1;
-  String _disabilityType = 'none';
-  bool _obscurePassword = true; // State toggle pengingat password aman
+  String _password = ''; // Variabel baru untuk menampung password
+  bool _obscurePassword = true; // State untuk toggle lihat/sembunyikan password
   bool _isLoading = false;
-
-  // void _submit() async {
-  //   if (_formKey.currentState!.validate()) {
-  //     _formKey.currentState!.save();
-  //     setState(() {
-  //       _isLoading = true;
-  //     });
-
-  //     String fcmToken;
-  //     if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) {
-  //       fcmToken = 'mock-fcm-token-web-${DateTime.now().millisecondsSinceEpoch}';
-  //     } else {
-  //       try {
-  //         fcmToken = await FirebaseMessaging.instance.getToken() ??
-  //             'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
-  //       } catch (_) {
-  //         fcmToken = 'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
-  //       }
-  //     }
-
-  //     // Mengirim data register beserta password baru ke server
-  //     final result = await _apiService.registerUser(
-  //       name: _name,
-  //       phone: _phone,
-  //       password: _password, // Tambahan parameter password
-  //       floor: _floor,
-  //       disabilityType: _disabilityType,
-  //       fcmToken: fcmToken,
-  //     );
-
-  //     setState(() {
-  //       _isLoading = false;
-  //     });
-
-  //     if (result['success']) {
-  //       int userId = result['data']['id'];
-        
-  //       SharedPreferences prefs = await SharedPreferences.getInstance();
-  //       await prefs.setInt('user_id', userId);
-  //       await prefs.setString('user_name', _name);
-  //       await prefs.setString('admin_status', 'pending');
-
-  //       if (!mounted) return;
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(builder: (context) => const DashboardScreen()),
-  //       );
-  //     } else {
-  //       if (!mounted) return;
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text(result['message']),
-  //           backgroundColor: const Color(0xFFDC1010),
-  //         ),
-  //       );
-  //     }
-  //   }
-  // }
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
@@ -90,36 +29,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _isLoading = true;
       });
 
-      // --- MOCK / BYPASS SEMENTARA TANPA BACKEND ---
-      await Future.delayed(const Duration(milliseconds: 500)); // Simulasi loading sebentar
-      
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('user_id', 999); // ID dummy
-      await prefs.setString('user_name', _name);
-      await prefs.setString('admin_status', 'safe'); // Diubah ke 'safe' agar langsung aktif jika dibutuhkan di dashboard
+      // Mengambil real token FCM dari Firebase untuk login device baru
+      String fcmToken;
+      if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+        fcmToken = 'mock-fcm-token-web-${DateTime.now().millisecondsSinceEpoch}';
+      } else {
+        try {
+          fcmToken = await FirebaseMessaging.instance.getToken() ??
+              'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
+        } catch (_) {
+          fcmToken = 'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
+        }
+      }
+
+      // Memanggil fungsi login pada ApiService dengan parameter password tambahan
+      final result = await _apiService.loginUser(
+        phone: _phone,
+        password: _password, // Mengirim password ke API
+        fcmToken: fcmToken,
+      );
 
       setState(() {
         _isLoading = false;
       });
 
-      if (!mounted) return;
-      
-      // Langsung arahkan ke DashboardScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-      );
-      // --------------------------------------------
+      if (result['success']) {
+        int userId = result['data']['id'];
+        String name = result['data']['name'] ?? 'Pengguna';
+
+        // Simpan sesi login baru ke lokal SharedPreferences
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('user_id', userId);
+        await prefs.setString('user_name', name);
+        await prefs.setString('admin_status', result['data']['admin_status'] ?? 'pending');
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: const Color(0xFFDC1010), // Warna Accent Merah
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColorHex = Color(0xFF282E58); 
-    const Color accentColorHex = Color(0xFFDC1010);  
+    const Color primaryColorHex = Color(0xFF282E58); // Navy utama
+    const Color accentColorHex = Color(0xFFDC1010);  // Merah aksen
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFC), 
+      backgroundColor: const Color(0xFFFCFCFC),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -128,9 +95,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(
-                  Icons.notifications_active_rounded, 
+                  Icons.notifications_active_rounded,
                   size: 80,
-                  color: accentColorHex, 
+                  color: accentColorHex,
                 ),
                 const SizedBox(height: 16),
                 const Row(
@@ -166,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 32),
                 Card(
-                  elevation: 0, 
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     side: BorderSide(color: Colors.grey.shade200, width: 1.5),
                     borderRadius: BorderRadius.circular(16),
@@ -179,7 +146,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            'Registrasi Pengguna',
+                            'Masuk Aplikasi',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 20,
@@ -190,17 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 24),
                           TextFormField(
                             decoration: const InputDecoration(
-                              labelText: 'Nama Lengkap',
-                              prefixIcon: Icon(Icons.person_outline, color: primaryColorHex),
-                            ),
-                            style: const TextStyle(color: primaryColorHex),
-                            validator: (val) => val == null || val.isEmpty ? 'Wajib diisi' : null,
-                            onSaved: (val) => _name = val!,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            decoration: const InputDecoration(
-                              labelText: 'Nomor HP',
+                              labelText: 'Nomor HP Terdaftar',
                               prefixIcon: Icon(Icons.phone_outlined, color: primaryColorHex),
                             ),
                             style: const TextStyle(color: primaryColorHex),
@@ -228,57 +185,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ),
                             style: const TextStyle(color: primaryColorHex),
-                            validator: (val) {
-                              if (val == null || val.isEmpty) return 'Password wajib diisi';
-                              if (val.length < 6) return 'Password minimal 6 karakter';
-                              return null;
-                            },
+                            validator: (val) => val == null || val.isEmpty ? 'Password wajib diisi' : null,
                             onSaved: (val) => _password = val!,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            decoration: const InputDecoration(
-                              labelText: 'Lantai Anda Bekerja',
-                              prefixIcon: Icon(Icons.business_outlined, color: primaryColorHex),
-                            ),
-                            style: const TextStyle(color: primaryColorHex),
-                            keyboardType: TextInputType.number,
-                            initialValue: '1',
-                            validator: (val) {
-                              if (val == null || val.isEmpty) return 'Wajib diisi';
-                              if (int.tryParse(val) == null) return 'Harus berupa angka';
-                              return null;
-                            },
-                            onSaved: (val) => _floor = int.parse(val!),
-                          ),
-                          const SizedBox(height: 16),
-                          DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(
-                              labelText: 'Jenis Disabilitas (Bantuan Khusus)',
-                              prefixIcon: Icon(Icons.accessible_forward, color: primaryColorHex),
-                            ),
-                            dropdownColor: Colors.white,
-                            style: const TextStyle(color: primaryColorHex, fontSize: 16),
-                            initialValue: _disabilityType,
-                            items: const [
-                              DropdownMenuItem(value: 'none', child: Text('Tidak Ada')),
-                              DropdownMenuItem(value: 'deaf', child: Text('Tuli / Tunarungu')),
-                              DropdownMenuItem(value: 'blind', child: Text('Buta / Tunanetra')),
-                            ],
-                            onChanged: (val) {
-                              setState(() {
-                                _disabilityType = val!;
-                              });
-                            },
-                            onSaved: (val) => _disabilityType = val!,
                           ),
                           const SizedBox(height: 32),
                           _isLoading
-                              ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(primaryColorHex)))
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(primaryColorHex),
+                                  ),
+                                )
                               : ElevatedButton(
                                   onPressed: _submit,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: primaryColorHex, 
+                                    backgroundColor: primaryColorHex,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(
@@ -286,7 +206,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                   ),
                                   child: const Text(
-                                    'Daftar Sekarang',
+                                    'Masuk',
                                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                                 ),
@@ -295,18 +215,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Sudah punya akun? ',
+                                'Belum punya akun? ',
                                 style: TextStyle(color: primaryColorHex.withOpacity(0.6)),
                               ),
                               GestureDetector(
                                 onTap: () {
                                   Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                    MaterialPageRoute(builder: (context) => const RegisterScreen()),
                                   );
                                 },
                                 child: const Text(
-                                  'Masuk di sini',
+                                  'Daftar di sini',
                                   style: TextStyle(
                                     color: primaryColorHex,
                                     fontWeight: FontWeight.bold,

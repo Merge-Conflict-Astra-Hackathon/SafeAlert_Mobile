@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'alert_screen.dart';
+import 'alert_screen.dart'; 
 import 'register_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -13,8 +13,10 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  int _selectedIndex = 0;
   String _userName = '';
-  String _adminStatus = 'pending';
+  String _adminStatus = 'safe'; // Default ke 'safe' sesuai kebutuhan tampilan foto kedua
+  String _userFloor = '7';      // Data dummy tambahan untuk pelengkap info lokasi user
   Timer? _pollingTimer;
 
   @override
@@ -23,7 +25,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadUserData();
     _setupFirebaseMessaging();
     
-    // Simulate polling for MVP / Hackathon
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _checkAlarm();
     });
@@ -39,7 +40,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _userName = prefs.getString('user_name') ?? 'User';
-      _adminStatus = prefs.getString('admin_status') ?? 'pending';
+      // Mengambil status admin, jika kosong set default ke safe agar sesuai mockup gambar kedua
+      _adminStatus = prefs.getString('admin_status') ?? 'safe';
+      _userFloor = prefs.getString('user_floor') ?? '7'; 
     });
   }
 
@@ -66,8 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _checkAlarm() async {
-    // Di aplikasi produksi, bagian ini digantikan oleh listener FCM
-    // Untuk hackathon, panggil API untuk mengecek alarm aktif
+    // Polling mock API
   }
 
   void _simulateIncomingAlarm() {
@@ -75,142 +77,276 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => AlertScreen(
-          alarmId: 1, // Mock alarm ID
+          alarmId: 1, 
           message: 'SIMULASI: EVAKUASI SEKARANG! Kebakaran di lantai Anda.',
         ),
       ),
     );
   }
 
-  Future<void> _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => RegisterScreen()),
-    );
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isVerified = _adminStatus != 'pending';
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.w600)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: _logout,
-            tooltip: 'Logout',
-          )
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Greeting Banner
-            Text(
-              'Halo, $_userName',
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 28),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tetap aman dan selalu waspada.',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 32),
-            
-            // Status Card
-            Card(
-              elevation: 4,
-              shadowColor: isVerified ? Colors.green.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Container(
+    const Color primaryColorHex = Color(0xFF282E58);
+    const Color fireCallColor = Color(0xFFBA3525); // Warna tombol 113
+    const Color policeCallColor = Color(0xFF2545BA); // Warna tombol 110
+
+    // 1. DAFTAR LAYOUT HALAMAN INTERNAL
+    final List<Widget> pages = [
+      // ==================== TAB 0: BERANDA (SESUAI MOCKUP FOTO KEDUA) ====================
+      SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 10),
+              
+              // ─── CARD STATUS UTAMA (ANDA AMAN) ───
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: isVerified 
-                      ? [Colors.green.shade50, Colors.white]
-                      : [Colors.orange.shade50, Colors.white],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(
-                    color: isVerified ? Colors.green.shade200 : Colors.orange.shade200,
-                    width: 1.5,
-                  )
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    )
+                  ],
                 ),
-                padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    Icon(
-                      isVerified ? Icons.verified_user_rounded : Icons.pending_actions_rounded,
-                      size: 64,
-                      color: isVerified ? Colors.green[700] : Colors.orange[700],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      isVerified ? 'Status Terverifikasi' : 'Menunggu Verifikasi Admin',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isVerified ? Colors.green[900] : Colors.orange[900],
+                    // Lingkaran Ikon Status Aman
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.green.shade100, width: 2),
+                      ),
+                      child: Icon(
+                        Icons.check_circle_rounded,
+                        size: 80,
+                        color: Colors.green.shade600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Status Anda:',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      isVerified 
-                        ? 'Aplikasi aktif memantau notifikasi darurat. Pastikan koneksi internet Anda stabil.'
-                        : 'Pendaftaran Anda sedang ditinjau. Anda akan mendapatkan notifikasi setelah disetujui.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                      'ANDA AMAN',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
-            
-            const SizedBox(height: 48),
-            
-            // Dev Tool / Hackathon Demo Area
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.shade200),
+              
+              const SizedBox(height: 32),
+              
+              // ─── INFORMASI USER (RATA KIRI) ───
+              const Text(
+                'Informasi Pengguna',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                  letterSpacing: 0.5,
+                ),
               ),
-              child: Column(
+              const SizedBox(height: 12),
+              Text(
+                'Nama: $_userName',
+                textAlign: TextAlign.left,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColorHex,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Lokasi: Lantai $_userFloor',
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.developer_mode, color: Colors.red[800], size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Demo / Hackathon Tools',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red[800]),
-                      ),
-                    ],
+                  Icon(Icons.gpp_good_rounded, size: 18, color: Colors.green.shade600),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Sistem Pemantauan Aktif',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.green.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
+                ],
+              ),
+              
+              const SizedBox(height: 40),
+              
+              // ─── TOMBOL EMERGENCY CALLS ───
+              Row(
+                children: [
+                  // Tombol Pemadam Kebakaran (113)
+                  Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _simulateIncomingAlarm,
-                      icon: const Icon(Icons.warning_amber_rounded, color: Colors.white),
-                      label: const Text('Simulasikan Menerima Alarm'),
+                      onPressed: () {
+                        // Tambahkan fungsi launchUrl('tel:113') nanti jika package url_launcher dipasang
+                      },
+                      icon: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 22),
+                      label: const Text(
+                        'Panggil 113\n(Pemadam)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                      ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[700],
+                        backgroundColor: fireCallColor,
                         padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Tombol Kepolisian (110)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        // Tambahkan fungsi launchUrl('tel:110')
+                      },
+                      icon: const Icon(Icons.local_police_rounded, color: Colors.white, size: 22),
+                      label: const Text(
+                        'Panggil 110\n(Polisi)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: policeCallColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 2,
                       ),
                     ),
                   ),
                 ],
               ),
+              
+              const SizedBox(height: 40),
+              
+              // ─── DEMO / HACKATHON TOOLS (DIPERTAHANKAN) ───
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.developer_mode, color: Colors.red[800], size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Demo / Hackathon Tools',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red[800]),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _simulateIncomingAlarm,
+                        icon: const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                        label: const Text('Simulasikan Menerima Alarm'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[700],
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      
+      // ==================== TAB 1 & 2: SCREEN LAINNYA ====================
+      const Center(child: Text("Ini Halaman Jalur Evakuasi", style: TextStyle(fontSize: 18))),
+      const Center(child: Text("Ini Halaman Profil Pengguna", style: TextStyle(fontSize: 18))),
+    ];
+
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50, // Latar belakang abu-abu terang bersih mewah
+      // appBar dihapus sepenuhnya agar bagian atas bersih tanpa teks & tombol logout
+      body: pages[_selectedIndex],
+      
+      // BOTTOM NAVIGATION BAR
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Colors.grey.shade200, width: 1.5),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          backgroundColor: Colors.white,
+          selectedItemColor: primaryColorHex,
+          unselectedItemColor: Colors.grey.shade500,
+          type: BottomNavigationBarType.fixed,
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.normal,
+            fontSize: 12,
+          ),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home_rounded),
+              label: 'Beranda',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.directions_run_rounded), 
+              label: 'Evakuasi',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline_rounded),
+              activeIcon: Icon(Icons.person_rounded),
+              label: 'Profil',
             ),
           ],
         ),
