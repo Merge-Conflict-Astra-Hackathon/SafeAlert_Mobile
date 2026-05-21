@@ -20,6 +20,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _userName = '';
   String _userFloor = '7';
   String _adminStatus = 'pending';
+  String _buildingName = '';
+  String _floorPlanUrl = '';
   Timer? _pollingTimer;
   final ApiService _apiService = ApiService();
   final TextEditingController _floorController = TextEditingController();
@@ -46,12 +48,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadUserData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    final buildingIdText = prefs.getString('building_id') ?? '';
     setState(() {
       _userName = prefs.getString('user_name') ?? 'User';
       _userFloor = prefs.getString('user_floor') ?? '7'; 
       _adminStatus = prefs.getString('admin_status') ?? 'pending';
+      _buildingName = prefs.getString('building_name') ?? '';
       _floorController.text = _userFloor;
     });
+    await _loadFloorPlan(buildingIdText);
+  }
+
+  Future<void> _loadFloorPlan(String buildingIdText) async {
+    if (buildingIdText.isEmpty) return;
+
+    final buildingId = int.tryParse(buildingIdText);
+    if (buildingId == null) return;
+
+    final buildings = await _apiService.getBuildings();
+    final building = buildings.cast<Map<String, dynamic>?>().firstWhere(
+      (item) => item?['id'] == buildingId,
+      orElse: () => null,
+    );
+    if (building == null || !mounted) return;
+
+    final floorPlan = (building['floor_plan'] ?? '').toString();
+    setState(() {
+      _buildingName = (building['name'] ?? _buildingName).toString();
+      _floorPlanUrl = ApiService.resolveAssetUrl(floorPlan);
+    });
+  }
+
+  void _openFloorPlanViewer() {
+    if (_floorPlanUrl.isEmpty) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FloorPlanViewerScreen(
+          imageUrl: _floorPlanUrl,
+          buildingName: _buildingName.isEmpty ? 'Denah Gedung' : _buildingName,
+        ),
+      ),
+    );
   }
 
   void _setupFirebaseMessaging() {
@@ -385,8 +424,150 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       
-      // ==================== TAB 1 & 2: SCREEN LAINNYA ====================
-      const Center(child: Text("Ini Halaman Jalur Evakuasi", style: TextStyle(fontSize: 18))),
+      SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Denah Evakuasi',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColorHex,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _buildingName.isEmpty
+                    ? 'Denah mengikuti gedung yang terhubung dengan akun Anda.'
+                    : 'Gedung: $_buildingName',
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F0E8),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(12),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _floorPlanUrl.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 36),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.map_outlined,
+                              size: 72,
+                              color: Colors.grey.shade500,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Denah gedung belum tersedia',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: primaryColorHex,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Admin dapat menambahkan image denah dari dashboard web pada menu Gedung.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                height: 1.4,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : InkWell(
+                        onTap: _openFloorPlanViewer,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            AspectRatio(
+                              aspectRatio: 4 / 3,
+                              child: Image.network(
+                                _floorPlanUrl,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      color: primaryColorHex,
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.broken_image_outlined,
+                                            size: 56,
+                                            color: Color(0xFFDC1010),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'Gagal memuat denah gedung.',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.fullscreen_rounded, color: primaryColorHex),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Ketuk denah untuk layar penuh',
+                                    style: TextStyle(
+                                      color: primaryColorHex,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
       SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
@@ -555,6 +736,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: 'Profil',
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FloorPlanViewerScreen extends StatelessWidget {
+  final String imageUrl;
+  final String buildingName;
+
+  const FloorPlanViewerScreen({
+    super.key,
+    required this.imageUrl,
+    required this.buildingName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const Color primaryColorHex = Color(0xFF282E58);
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text(buildingName),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: InteractiveViewer(
+          minScale: 0.8,
+          maxScale: 5,
+          child: Center(
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const CircularProgressIndicator(color: primaryColorHex);
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'Gagal memuat denah gedung.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),

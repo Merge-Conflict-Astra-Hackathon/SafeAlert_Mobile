@@ -14,6 +14,15 @@ class ApiService {
     return 'http://10.0.2.2:8000/api';
   }
 
+  static String resolveAssetUrl(String url) {
+    if (url.isEmpty || url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    final apiUri = Uri.parse(baseUrl);
+    return apiUri.replace(path: url).toString();
+  }
+
   Future<Map<String, String>> _headers({bool withAuth = false}) async {
     final headers = {
       'Content-Type': 'application/json',
