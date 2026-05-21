@@ -1,10 +1,16 @@
 package com.example.safealert_mobile
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -15,11 +21,19 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "safealert/device_alert"
+    private val notificationChannelId = "safealert_emergency"
     private var previousBrightness: Float? = null
     private var previousRingerMode: Int? = null
     private val previousVolumes = mutableMapOf<Int, Int>()
     private var alarmPlayer: MediaPlayer? = null
     private var alertModeActive = false
+    private val volumeHandler = Handler(Looper.getMainLooper())
+    private var volumeEnforcer: Runnable? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        createEmergencyNotificationChannel()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -80,6 +94,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        startVolumeEnforcer(audioManager, streams)
         startAlarmSound()
         startEmergencyVibration()
     }
@@ -90,6 +105,7 @@ class MainActivity : FlutterActivity() {
 
         stopAlarmSound()
         stopEmergencyVibration()
+        stopVolumeEnforcer()
 
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         previousBrightness?.let { brightness ->
@@ -124,6 +140,23 @@ class MainActivity : FlutterActivity() {
         super.onDestroy()
     }
 
+    private fun createEmergencyNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val channel = NotificationChannel(
+            notificationChannelId,
+            "SafeAlert Emergency",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Alarm darurat SafeAlert"
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 1000, 300, 1000, 300, 1000)
+        }
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
+    }
+
     private fun startAlarmSound() {
         stopAlarmSound()
 
@@ -148,6 +181,35 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun startVolumeEnforcer(audioManager: AudioManager, streams: List<Int>) {
+        stopVolumeEnforcer()
+        volumeEnforcer = object : Runnable {
+            override fun run() {
+                if (!alertModeActive) return
+
+                streams.forEach { stream ->
+                    try {
+                        audioManager.setStreamVolume(
+                            stream,
+                            audioManager.getStreamMaxVolume(stream),
+                            0,
+                        )
+                    } catch (_: SecurityException) {
+                        // Android may block this under Do Not Disturb or device policy.
+                    }
+                }
+
+                volumeHandler.postDelayed(this, 500)
+            }
+        }
+        volumeEnforcer?.let { volumeHandler.post(it) }
+    }
+
+    private fun stopVolumeEnforcer() {
+        volumeEnforcer?.let { volumeHandler.removeCallbacks(it) }
+        volumeEnforcer = null
+    }
+
     private fun stopAlarmSound() {
         try {
             alarmPlayer?.stop()
@@ -159,13 +221,14 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun startEmergencyVibration() {
-        val pattern = longArrayOf(0, 700, 250, 700, 500)
+        val pattern = longArrayOf(0, 1000, 300, 1000, 300, 1000, 600)
         val vibrator = getVibrator()
         if (!vibrator.hasVibrator()) return
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))
+                val amplitudes = intArrayOf(0, 255, 0, 255, 0, 255, 0)
+                vibrator.vibrate(VibrationEffect.createWaveform(pattern, amplitudes, 0))
             } else {
                 @Suppress("DEPRECATION")
                 vibrator.vibrate(pattern, 0)

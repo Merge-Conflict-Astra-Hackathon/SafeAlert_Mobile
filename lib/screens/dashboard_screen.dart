@@ -9,7 +9,9 @@ import 'alert_screen.dart';
 import 'login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final bool firebaseReady;
+
+  const DashboardScreen({super.key, this.firebaseReady = true});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -32,10 +34,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadUserData();
-    _setupFirebaseMessaging();
+    if (widget.firebaseReady) {
+      _setupFirebaseMessaging();
+    }
 
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      _checkAlarm();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      await _refreshUserProfile();
+      await _checkAlarm();
     });
   }
 
@@ -49,6 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadUserData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final buildingIdText = prefs.getString('building_id') ?? '';
+    if (!mounted) return;
     setState(() {
       _userName = prefs.getString('user_name') ?? 'User';
       _userFloor = prefs.getString('user_floor') ?? '7';
@@ -57,6 +63,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _floorController.text = _userFloor;
     });
     await _loadFloorPlan(buildingIdText);
+    await _refreshUserProfile();
+  }
+
+  Future<void> _refreshUserProfile() async {
+    final data = await _apiService.refreshCurrentUser();
+    if (data == null || !mounted) return;
+
+    final floorPlan = ApiService.resolveAssetUrl(
+      (data['floor_plan'] ?? '').toString(),
+    );
+    final buildingIdText = (data['building_id'] ?? '').toString();
+    setState(() {
+      _userName = (data['name'] ?? _userName).toString();
+      _userFloor = (data['floor'] ?? _userFloor).toString();
+      _adminStatus = (data['admin_status'] ?? _adminStatus).toString();
+      _buildingName = (data['building_name'] ?? _buildingName).toString();
+      if (floorPlan.isNotEmpty) {
+        _floorPlanUrl = floorPlan;
+      }
+      _floorController.text = _userFloor;
+    });
+
+    if (_floorPlanUrl.isEmpty) {
+      await _loadFloorPlan(buildingIdText);
+    }
   }
 
   Future<void> _loadFloorPlan(String buildingIdText) async {
@@ -94,25 +125,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _setupFirebaseMessaging() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      if (!mounted) return;
-      if (message.data['type'] == 'emergency') {
-        int alarmId = int.tryParse(message.data['alarm_id'] ?? '') ?? 1;
-        if (await _apiService.hasRespondedToAlarm(alarmId)) return;
-        if (!mounted) return;
+    try {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+        await _handleRemoteMessage(message);
+      });
 
-        String msg = message.data['message'] ?? 'EVAKUASI SEKARANG!';
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+        await _handleRemoteMessage(message);
+      });
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AlertScreen(alarmId: alarmId, message: msg),
-          ),
-        );
-      } else if (message.data['type'] == 'cancel') {
+      FirebaseMessaging.instance
+          .getInitialMessage()
+          .then((message) async {
+            if (message != null) {
+              await _handleRemoteMessage(message);
+            }
+          })
+          .catchError((error) {
+            debugPrint('[Firebase] Initial message failed: $error');
+          });
+    } catch (e) {
+      debugPrint('[Firebase] Messaging listener failed: $e');
+    }
+  }
+
+  Future<void> _handleRemoteMessage(RemoteMessage message) async {
+    if (!mounted) return;
+
+    if (message.data['type'] == 'emergency') {
+      final alarmId = int.tryParse(message.data['alarm_id'] ?? '') ?? 1;
+      final msg = message.data['message'] ?? 'EVAKUASI SEKARANG!';
+
+      if (_isShowingAlert) return;
+      _isShowingAlert = true;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AlertScreen(alarmId: alarmId, message: msg),
+        ),
+      );
+      _isShowingAlert = false;
+    } else if (message.data['type'] == 'cancel') {
+      if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
-    });
+    }
   }
 
   Future<void> _checkAlarm() async {

@@ -296,9 +296,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             style: const TextStyle(color: primaryColorHex, fontSize: 16),
                             initialValue: _disabilityType,
                             items: const [
+                              DropdownMenuItem(value: 'blind', child: Text('Tunanetra')),
+                              DropdownMenuItem(value: 'deaf', child: Text('Tunarungu')),
                               DropdownMenuItem(value: 'none', child: Text('Tidak Ada')),
-                              DropdownMenuItem(value: 'deaf', child: Text('Tuli / Tunarungu')),
-                              DropdownMenuItem(value: 'blind', child: Text('Buta / Tunanetra')),
                             ],
                             onChanged: (val) {
                               setState(() {

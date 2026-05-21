@@ -59,29 +59,13 @@ class ApiService {
     return [];
   }
 
-  Future<Set<int>> _respondedAlarmIds() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs
-            .getStringList('responded_alarm_ids')
-            ?.map(int.tryParse)
-            .whereType<int>()
-            .toSet() ??
-        <int>{};
-  }
-
   Future<void> markAlarmResponded(int alarmId) async {
     final prefs = await SharedPreferences.getInstance();
-    final ids = await _respondedAlarmIds();
-    ids.add(alarmId);
-    await prefs.setStringList(
-      'responded_alarm_ids',
-      ids.map((id) => id.toString()).toList(),
-    );
+    await prefs.remove('responded_alarm_ids');
   }
 
   Future<bool> hasRespondedToAlarm(int alarmId) async {
-    final ids = await _respondedAlarmIds();
-    return ids.contains(alarmId);
+    return false;
   }
 
   Future<void> _saveSession(Map<String, dynamic> responseData) async {
@@ -114,6 +98,47 @@ class ApiService {
         'refresh_token',
         (tokens['refresh'] ?? '').toString(),
       );
+    }
+  }
+
+  Future<Map<String, dynamic>?> refreshCurrentUser() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/my_profile/'),
+        headers: await _headers(withAuth: true),
+      );
+
+      if (response.statusCode != 200) return null;
+
+      final profile = _decodeResponse(response);
+      final user = profile['user'] is Map
+          ? Map<String, dynamic>.from(profile['user'] as Map)
+          : <String, dynamic>{};
+      final building = profile['building'] is Map
+          ? Map<String, dynamic>.from(profile['building'] as Map)
+          : <String, dynamic>{};
+      final firstName = (user['first_name'] ?? '').toString().trim();
+      final lastName = (user['last_name'] ?? '').toString().trim();
+      final fullName = [firstName, lastName]
+          .where((part) => part.isNotEmpty)
+          .join(' ')
+          .trim();
+      final data = <String, dynamic>{
+        'id': user['id'],
+        'name': fullName.isNotEmpty
+            ? fullName
+            : (user['username'] ?? 'Pengguna').toString(),
+        'admin_status': (profile['status'] ?? 'pending').toString(),
+        'floor': (profile['last_location'] ?? '').toString(),
+        'building_id': building['id'],
+        'building_name': (building['name'] ?? '').toString(),
+        'floor_plan': (building['floor_plan'] ?? '').toString(),
+      };
+
+      await _saveSession({'data': data});
+      return data;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -233,7 +258,6 @@ class ApiService {
       final responseData = _decodeResponse(response);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        await markAlarmResponded(alarmId);
         return {'success': true, 'data': responseData};
       }
 
@@ -259,9 +283,8 @@ class ApiService {
       if (response.statusCode == 200) {
         final alerts = jsonDecode(response.body) as List<dynamic>;
         if (alerts.isEmpty) return null;
-        final respondedIds = await _respondedAlarmIds();
         final alert = alerts.whereType<Map<String, dynamic>>().firstWhere(
-          (alert) => !respondedIds.contains(alert['id'] as int),
+          (alert) => true,
           orElse: () => <String, dynamic>{},
         );
         if (alert.isEmpty) return null;

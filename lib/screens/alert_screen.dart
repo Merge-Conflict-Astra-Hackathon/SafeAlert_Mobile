@@ -14,7 +14,8 @@ class AlertScreen extends StatefulWidget {
   State<AlertScreen> createState() => _AlertScreenState();
 }
 
-class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStateMixin {
+class _AlertScreenState extends State<AlertScreen>
+    with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   final AlertDeviceService _alertDeviceService = AlertDeviceService();
   bool _isLoading = false;
@@ -27,7 +28,7 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 1),
+      duration: const Duration(milliseconds: 500),
     )..repeat(reverse: true);
     _activateAlertMode();
   }
@@ -222,19 +223,38 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFB71C1C), // Deep Red Background
-      appBar: AppBar(
-        title: const Text('PERINGATAN DARURAT', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.white)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        automaticallyImplyLeading: false, 
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        final backgroundColor = Color.lerp(
+          Colors.white,
+          const Color(0xFFB71C1C),
+          _animationController.value,
+        )!;
+        final foregroundColor = _animationController.value > 0.45
+            ? Colors.white
+            : const Color(0xFFB71C1C);
+
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          appBar: AppBar(
+            title: Text(
+              'PERINGATAN DARURAT',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+                color: foregroundColor,
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            automaticallyImplyLeading: false,
+          ),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AnimatedBuilder(
@@ -242,7 +262,11 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
                 builder: (context, child) {
                   return Transform.scale(
                     scale: 1.0 + (_animationController.value * 0.1),
-                    child: const Icon(Icons.warning_rounded, size: 100, color: Colors.white),
+                    child: Icon(
+                      Icons.warning_rounded,
+                      size: 100,
+                      color: foregroundColor,
+                    ),
                   );
                 },
               ),
@@ -278,19 +302,19 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
                 ),
               ),
               const Spacer(),
-              const Text(
+              Text(
                 'LAPORKAN STATUS ANDA:',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: foregroundColor,
                   letterSpacing: 1.2,
                 ),
               ),
               const SizedBox(height: 16),
               if (_isLoading) 
-                const Center(child: CircularProgressIndicator(color: Colors.white)),
+                Center(child: CircularProgressIndicator(color: foregroundColor)),
               if (!_isLoading && !_isConfirmed) ...[
                 _buildStatusButton('SAYA AMAN', 'safe', Colors.green.shade700, Icons.check_circle_outline),
                 _buildStatusButton('EVAKUASI', 'evacuating', Colors.orange.shade800, Icons.directions_run_rounded),
@@ -316,10 +340,12 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
                   ),
                 ),
               const SizedBox(height: 16),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -2,17 +2,36 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 
+@pragma('vm:entry-point')
+Future<void> safeAlertBackgroundMessageHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  var firebaseReady = false;
 
   // Firebase hanya tersedia pada platform Android/iOS dengan konfigurasi native.
   // Pada web/Windows (untuk demo), inisialisasi dilewati agar app tetap bisa berjalan.
   if (!kIsWeb && defaultTargetPlatform != TargetPlatform.windows) {
     try {
       await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(safeAlertBackgroundMessageHandler);
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      firebaseReady = true;
     } catch (e) {
       // Firebase init gagal (misal: google-services.json tidak ada/cocok).
       // App tetap berjalan dalam mode tanpa FCM (mock mode).
@@ -24,13 +43,23 @@ void main() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   int? userId = prefs.getInt('user_id');
 
-  runApp(SafeAlertApp(initialRoute: userId == null ? '/register' : '/dashboard'));
+  runApp(
+    SafeAlertApp(
+      initialRoute: userId == null ? '/register' : '/dashboard',
+      firebaseReady: firebaseReady,
+    ),
+  );
 }
 
 class SafeAlertApp extends StatelessWidget {
   final String initialRoute;
+  final bool firebaseReady;
 
-  const SafeAlertApp({super.key, required this.initialRoute});
+  const SafeAlertApp({
+    super.key,
+    required this.initialRoute,
+    required this.firebaseReady,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +141,8 @@ class SafeAlertApp extends StatelessWidget {
       initialRoute: initialRoute,
       routes: {
         '/register': (context) => const RegisterScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
+        '/dashboard': (context) =>
+            DashboardScreen(firebaseReady: firebaseReady),
       },
     );
   }

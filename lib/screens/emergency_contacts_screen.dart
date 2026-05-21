@@ -25,12 +25,57 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   bool _isSubmitting = false;
   String _currentStatus = 'Belum ada status';
   String _currentStatusKey = 'no_response';
+  String _buildingName = '';
+  String _floorPlanUrl = '';
 
   @override
   void initState() {
     super.initState();
     _currentStatusKey = _normalizeStatus(widget.initialStatus);
     _currentStatus = _statusLabel(_currentStatusKey);
+    _loadFloorPlan();
+  }
+
+  Future<void> _loadFloorPlan() async {
+    final prefs = await SharedPreferences.getInstance();
+    final buildingId = int.tryParse(prefs.getString('building_id') ?? '');
+    final buildingName = prefs.getString('building_name') ?? '';
+
+    if (mounted && buildingName.isNotEmpty) {
+      setState(() {
+        _buildingName = buildingName;
+      });
+    }
+
+    if (buildingId == null) return;
+
+    final buildings = await _apiService.getBuildings();
+    final building = buildings.cast<Map<String, dynamic>?>().firstWhere(
+      (item) => item?['id'] == buildingId,
+      orElse: () => null,
+    );
+    if (building == null || !mounted) return;
+
+    setState(() {
+      _buildingName = (building['name'] ?? _buildingName).toString();
+      _floorPlanUrl = ApiService.resolveAssetUrl(
+        (building['floor_plan'] ?? '').toString(),
+      );
+    });
+  }
+
+  void _openFloorPlanViewer() {
+    if (_floorPlanUrl.isEmpty) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _FloorPlanViewerScreen(
+          imageUrl: _floorPlanUrl,
+          buildingName: _buildingName.isEmpty ? 'Denah Gedung' : _buildingName,
+        ),
+      ),
+    );
   }
 
   Future<void> _changeStatus(String status) async {
@@ -335,7 +380,6 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               ],
             ),
           ),
-          const Icon(Icons.phone_forwarded_rounded, color: Color(0xFF282E58)),
         ],
       ),
     );
@@ -369,7 +413,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     );
   }
 
-  Widget _buildEvacuationMapPlaceholder() {
+  Widget _buildEvacuationMap() {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -394,41 +438,73 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               ),
             ],
           ),
+          if (_buildingName.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              _buildingName,
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            ),
+          ],
           const SizedBox(height: 14),
-          Container(
-            height: 180,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F4F8),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                style: BorderStyle.solid,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.image_not_supported_outlined,
-                  size: 54,
-                  color: Colors.grey.shade500,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Foto denah belum tersedia',
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.bold,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: _floorPlanUrl.isEmpty
+                ? Container(
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F4F8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 54,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Foto denah belum tersedia',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : InkWell(
+                    onTap: _openFloorPlanViewer,
+                    child: AspectRatio(
+                      aspectRatio: 4 / 3,
+                      child: Image.network(
+                        _floorPlanUrl,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF282E58),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: const Color(0xFFF2F4F8),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Gagal memuat denah gedung.',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Nanti area ini bisa diisi gambar denah lantai.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -497,7 +573,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                 color: Colors.green.shade700,
               ),
               const SizedBox(height: 24),
-              _buildEvacuationMapPlaceholder(),
+              _buildEvacuationMap(),
               const SizedBox(height: 28),
               const Text(
                 'Ubah Status Saya',
@@ -550,4 +626,52 @@ class _EmergencyReport {
   final String notes;
 
   const _EmergencyReport({required this.location, required this.notes});
+}
+
+class _FloorPlanViewerScreen extends StatelessWidget {
+  final String imageUrl;
+  final String buildingName;
+
+  const _FloorPlanViewerScreen({
+    required this.imageUrl,
+    required this.buildingName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text(buildingName),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: InteractiveViewer(
+          minScale: 0.8,
+          maxScale: 5,
+          child: Center(
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const CircularProgressIndicator(color: Colors.white);
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'Gagal memuat denah gedung.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
