@@ -9,9 +9,9 @@ class ApiService {
     const overrideUrl = String.fromEnvironment('SAFEALERT_API_URL');
     if (overrideUrl.isNotEmpty) return overrideUrl;
 
-    if (kIsWeb) return 'http://127.0.0.1:8089/api';
+    if (kIsWeb) return 'http://127.0.0.1:8000/api';
     // Android emulator maps host machine localhost to 10.0.2.2.
-    return 'http://10.0.2.2:8089/api';
+    return 'http://10.0.2.2:8000/api';
   }
 
   Future<Map<String, String>> _headers({bool withAuth = false}) async {
@@ -36,6 +36,31 @@ class ApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  Future<Set<int>> _respondedAlarmIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs
+        .getStringList('responded_alarm_ids')
+        ?.map(int.tryParse)
+        .whereType<int>()
+        .toSet() ??
+        <int>{};
+  }
+
+  Future<void> markAlarmResponded(int alarmId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = await _respondedAlarmIds();
+    ids.add(alarmId);
+    await prefs.setStringList(
+      'responded_alarm_ids',
+      ids.map((id) => id.toString()).toList(),
+    );
+  }
+
+  Future<bool> hasRespondedToAlarm(int alarmId) async {
+    final ids = await _respondedAlarmIds();
+    return ids.contains(alarmId);
+  }
+
   Future<void> _saveSession(Map<String, dynamic> responseData) async {
     final data = (responseData['data'] ?? responseData) as Map<String, dynamic>;
     final tokens = responseData['tokens'] as Map<String, dynamic>?;
@@ -45,7 +70,7 @@ class ApiService {
     await prefs.setString('user_name', (data['name'] ?? 'Pengguna').toString());
     await prefs.setString(
       'admin_status',
-      (data['admin_status'] ?? 'active').toString(),
+      (data['admin_status'] ?? 'pending').toString(),
     );
     await prefs.setString('user_floor', (data['floor'] ?? '').toString());
 
@@ -83,7 +108,11 @@ class ApiService {
 
       if (response.statusCode == 201) {
         await _saveSession(responseData);
-        return {'success': true, 'data': responseData['data']};
+        return {
+          'success': true,
+          'data': responseData['data'],
+          'message': responseData['message'],
+        };
       }
 
       return {
@@ -134,6 +163,8 @@ class ApiService {
     required int alarmId,
     required int userId,
     required String status,
+    String location = '',
+    String notes = '',
   }) async {
     final normalizedStatus = status == 'evacuating' ? 'needs_help' : status;
 
@@ -144,11 +175,14 @@ class ApiService {
         body: jsonEncode({
           'alert_id': alarmId,
           'status': normalizedStatus,
+          'location': location,
+          'notes': notes,
         }),
       );
       final responseData = _decodeResponse(response);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        await markAlarmResponded(alarmId);
         return {'success': true, 'data': responseData};
       }
 
@@ -173,7 +207,14 @@ class ApiService {
       if (response.statusCode == 200) {
         final alerts = jsonDecode(response.body) as List<dynamic>;
         if (alerts.isEmpty) return null;
-        final alert = alerts.first as Map<String, dynamic>;
+        final respondedIds = await _respondedAlarmIds();
+        final alert = alerts
+            .whereType<Map<String, dynamic>>()
+            .firstWhere(
+              (alert) => !respondedIds.contains(alert['id'] as int),
+              orElse: () => <String, dynamic>{},
+            );
+        if (alert.isEmpty) return null;
         return {
           'id': alert['id'],
           'message': alert['description'] ?? alert['title'] ?? 'EVAKUASI SEKARANG!',

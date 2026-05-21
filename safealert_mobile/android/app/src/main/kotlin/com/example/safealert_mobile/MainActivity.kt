@@ -4,7 +4,6 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -128,11 +127,8 @@ class MainActivity : FlutterActivity() {
     private fun startAlarmSound() {
         stopAlarmSound()
 
-        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            ?: return
-
         try {
+            val afd = resources.openRawResourceFd(R.raw.alert)
             alarmPlayer = MediaPlayer().apply {
                 setAudioAttributes(
                     AudioAttributes.Builder()
@@ -140,11 +136,12 @@ class MainActivity : FlutterActivity() {
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
-                setDataSource(this@MainActivity, alarmUri)
+                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
                 isLooping = true
                 prepare()
                 start()
             }
+            afd.close()
         } catch (_: Exception) {
             alarmPlayer?.release()
             alarmPlayer = null

@@ -58,6 +58,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (result['success']) {
         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'] ??
+                  'Registrasi berhasil. Akun menunggu verifikasi admin.',
+            ),
+          ),
+        );
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),

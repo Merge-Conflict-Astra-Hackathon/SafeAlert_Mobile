@@ -18,6 +18,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   String _userName = '';
   String _userFloor = '7';
+  String _adminStatus = 'pending';
   Timer? _pollingTimer;
   final ApiService _apiService = ApiService();
   final TextEditingController _floorController = TextEditingController();
@@ -47,15 +48,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _userName = prefs.getString('user_name') ?? 'User';
       _userFloor = prefs.getString('user_floor') ?? '7'; 
+      _adminStatus = prefs.getString('admin_status') ?? 'pending';
       _floorController.text = _userFloor;
     });
   }
 
   void _setupFirebaseMessaging() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       if (!mounted) return;
       if (message.data['type'] == 'emergency') {
         int alarmId = int.tryParse(message.data['alarm_id'] ?? '') ?? 1;
+        if (await _apiService.hasRespondedToAlarm(alarmId)) return;
         String msg = message.data['message'] ?? 'EVAKUASI SEKARANG!';
         
         Navigator.push(
@@ -74,6 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _checkAlarm() async {
+    if (_adminStatus != 'active') return;
     if (_isShowingAlert) return;
 
     final alarm = await _apiService.checkActiveAlarm();
@@ -92,17 +96,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _isShowingAlert = false;
   }
 
-  void _simulateIncomingAlarm() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AlertScreen(
-          alarmId: 1, 
-          message: 'SIMULASI: EVAKUASI SEKARANG! Kebakaran di lantai Anda.',
-        ),
-      ),
-    );
-  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -153,6 +146,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const Color primaryColorHex = Color(0xFF282E58);
     const Color fireCallColor = Color(0xFFBA3525); // Warna tombol 113
     const Color policeCallColor = Color(0xFF2545BA); // Warna tombol 110
+    final bool isVerified = _adminStatus == 'active';
 
     // 1. DAFTAR LAYOUT HALAMAN INTERNAL
     final List<Widget> pages = [
@@ -185,14 +179,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: isVerified ? Colors.green.shade50 : Colors.orange.shade50,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.green.shade100, width: 2),
+                        border: Border.all(
+                          color: isVerified ? Colors.green.shade100 : Colors.orange.shade100,
+                          width: 2,
+                        ),
                       ),
                       child: Icon(
-                        Icons.check_circle_rounded,
+                        isVerified ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
                         size: 80,
-                        color: Colors.green.shade600,
+                        color: isVerified ? Colors.green.shade600 : Colors.orange.shade700,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -206,14 +203,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'ANDA AMAN',
+                      isVerified ? 'ANDA AMAN' : 'MENUNGGU VERIFIKASI',
                       style: TextStyle(
-                        fontSize: 26,
+                        fontSize: isVerified ? 26 : 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
+                        color: isVerified ? Colors.green.shade700 : Colors.orange.shade800,
                         letterSpacing: 0.5,
                       ),
                     ),
+                    if (!isVerified) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'Akun Anda sudah masuk ke daftar verifikasi admin. Fitur pemantauan alarm aktif setelah admin menyetujui akun.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -253,13 +262,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Icon(Icons.gpp_good_rounded, size: 18, color: Colors.green.shade600),
+                  Icon(
+                    isVerified ? Icons.gpp_good_rounded : Icons.pending_actions_rounded,
+                    size: 18,
+                    color: isVerified ? Colors.green.shade600 : Colors.orange.shade700,
+                  ),
                   const SizedBox(width: 6),
                   Text(
-                    'Sistem Pemantauan Aktif',
+                    isVerified ? 'Sistem Pemantauan Aktif' : 'Menunggu Verifikasi Admin',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.green.shade600,
+                      color: isVerified ? Colors.green.shade600 : Colors.orange.shade700,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -313,46 +326,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ],
-              ),
-              
-              const SizedBox(height: 40),
-              
-              // ─── DEMO / HACKATHON TOOLS (DIPERTAHANKAN) ───
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.developer_mode, color: Colors.red[800], size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Demo / Hackathon Tools',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red[800]),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _simulateIncomingAlarm,
-                        icon: const Icon(Icons.warning_amber_rounded, color: Colors.white),
-                        label: const Text('Simulasikan Menerima Alarm'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[700],
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),

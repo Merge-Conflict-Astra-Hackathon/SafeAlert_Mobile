@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/alert_device_service.dart';
 import '../services/api_service.dart';
+import 'emergency_contacts_screen.dart';
 
 class AlertScreen extends StatefulWidget {
   final int alarmId;
@@ -49,7 +50,25 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
     await _alertDeviceService.restoreAlertMode();
   }
 
-  Future<void> _submitStatus(String status) async {
+  Future<void> _handleStatusTap(String status) async {
+    if (status == 'trapped') {
+      await _showTrappedInputSheet();
+      return;
+    }
+
+    final instruction = status == 'safe'
+        ? 'Your Safe Now, Listen For Further Instruction'
+        : 'Keep aware to your surrounding';
+
+    await _submitStatus(status, successMessage: instruction);
+  }
+
+  Future<void> _submitStatus(
+    String status, {
+    String location = '',
+    String notes = '',
+    String? successMessage,
+  }) async {
     setState(() {
       _isLoading = true;
     });
@@ -72,6 +91,8 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
       alarmId: widget.alarmId,
       userId: userId,
       status: status,
+      location: location,
+      notes: notes,
     );
 
     setState(() {
@@ -84,22 +105,16 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
         _isConfirmed = true;
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Status berhasil dikirim. Tetap tenang!')),
+      await _showInstructionDialog(
+        successMessage ?? 'Status berhasil dikirim. Tetap tenang!',
       );
-      
-      // Kembali ke dashboard setelah beberapa detik
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          Navigator.pop(context);
-        }
-      });
+      _goToEmergencyContacts(status);
     } else {
       if (result['message'] != null && result['message'].toString().contains('sudah memberikan konfirmasi')) {
          await _restoreAlertMode();
          setState(() { _isConfirmed = true; });
          if (!mounted) return;
-         Navigator.pop(context);
+         _goToEmergencyContacts(status);
       } else {
          if (!mounted) return;
          ScaffoldMessenger.of(context).showSnackBar(
@@ -109,6 +124,70 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
     }
   }
 
+  void _goToEmergencyContacts(String status) {
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EmergencyContactsScreen(
+          alarmId: widget.alarmId,
+          message: widget.message,
+          initialStatus: status,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showInstructionDialog(String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Status Terkirim'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showTrappedInputSheet() async {
+    await _showInstructionDialog('Beri tahu lokasi kamu');
+    if (!mounted) return;
+
+    final locationController = TextEditingController();
+    final notesController = TextEditingController();
+
+    final result = await Navigator.push<_TrappedReport>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _TrappedInputScreen(
+          locationController: locationController,
+          notesController: notesController,
+        ),
+      ),
+    );
+
+    locationController.dispose();
+    notesController.dispose();
+
+    if (result == null) return;
+
+    await _submitStatus(
+      'trapped',
+      location: result.location,
+      notes: result.notes,
+      successMessage: 'Laporan lokasi kamu sudah dikirim ke admin.',
+    );
+  }
+
   Widget _buildStatusButton(String title, String status, Color color, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -116,7 +195,7 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
         width: double.infinity,
         height: 70,
         child: ElevatedButton(
-          onPressed: _isLoading || _isConfirmed ? null : () => _submitStatus(status),
+          onPressed: _isLoading || _isConfirmed ? null : () => _handleStatusTap(status),
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.white,
@@ -237,6 +316,134 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
                   ),
                 ),
               const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrappedReport {
+  final String location;
+  final String notes;
+
+  const _TrappedReport({
+    required this.location,
+    required this.notes,
+  });
+}
+
+class _TrappedInputScreen extends StatelessWidget {
+  final TextEditingController locationController;
+  final TextEditingController notesController;
+
+  const _TrappedInputScreen({
+    required this.locationController,
+    required this.notesController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF282E58);
+    const dangerColor = Color(0xFFB71C1C);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFCFCFC),
+      appBar: AppBar(
+        title: const Text('Laporkan Lokasi'),
+        backgroundColor: dangerColor,
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.red.shade100),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.location_on_rounded, size: 56, color: dangerColor),
+                    SizedBox(height: 12),
+                    Text(
+                      'Beri tahu lokasi kamu',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: dangerColor,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Informasi ini akan masuk ke dashboard admin agar petugas bisa melihat keterangan setiap user.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(height: 1.4, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: locationController,
+                decoration: const InputDecoration(
+                  labelText: 'Lokasi kamu sekarang',
+                  hintText: 'Contoh: Lantai 7, dekat tangga darurat A',
+                  prefixIcon: Icon(Icons.place_outlined, color: primaryColor),
+                ),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: notesController,
+                decoration: const InputDecoration(
+                  labelText: 'Keterangan tambahan',
+                  hintText: 'Contoh: asap tebal, pintu terkunci, butuh bantuan kursi roda',
+                  prefixIcon: Icon(Icons.notes_outlined, color: primaryColor),
+                  alignLabelWithHint: true,
+                ),
+                minLines: 4,
+                maxLines: 6,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  final location = locationController.text.trim();
+                  final notes = notesController.text.trim();
+
+                  if (location.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Lokasi wajib diisi agar admin bisa membantu.'),
+                        backgroundColor: dangerColor,
+                      ),
+                    );
+                    return;
+                  }
+
+                  Navigator.pop(
+                    context,
+                    _TrappedReport(location: location, notes: notes),
+                  );
+                },
+                icon: const Icon(Icons.send_rounded),
+                label: const Text('Kirim ke Admin'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: dangerColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
