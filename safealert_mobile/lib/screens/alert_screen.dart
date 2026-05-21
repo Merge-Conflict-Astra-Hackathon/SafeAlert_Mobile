@@ -126,7 +126,8 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFB71C1C), // Deep Red Background
+      backgroundColor: const Color(0xFFDC1010),
+ // Deep Red Background
       appBar: AppBar(
         title: const Text('PERINGATAN DARURAT', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, color: Colors.white)),
         backgroundColor: Colors.transparent,
