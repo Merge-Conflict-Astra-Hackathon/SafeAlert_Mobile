@@ -1,9 +1,11 @@
 import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/api_service.dart';
 import 'alert_screen.dart'; 
-import 'register_screen.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,9 +17,12 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   String _userName = '';
-  String _adminStatus = 'safe'; // Default ke 'safe' sesuai kebutuhan tampilan foto kedua
-  String _userFloor = '7';      // Data dummy tambahan untuk pelengkap info lokasi user
+  String _userFloor = '7';
   Timer? _pollingTimer;
+  final ApiService _apiService = ApiService();
+  final TextEditingController _floorController = TextEditingController();
+  bool _isShowingAlert = false;
+  bool _isSavingFloor = false;
 
   @override
   void initState() {
@@ -33,6 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _floorController.dispose();
     super.dispose();
   }
 
@@ -40,9 +46,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _userName = prefs.getString('user_name') ?? 'User';
-      // Mengambil status admin, jika kosong set default ke safe agar sesuai mockup gambar kedua
-      _adminStatus = prefs.getString('admin_status') ?? 'safe';
       _userFloor = prefs.getString('user_floor') ?? '7'; 
+      _floorController.text = _userFloor;
     });
   }
 
@@ -69,7 +74,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _checkAlarm() async {
-    // Polling mock API
+    if (_isShowingAlert) return;
+
+    final alarm = await _apiService.checkActiveAlarm();
+    if (alarm == null || !mounted) return;
+
+    _isShowingAlert = true;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AlertScreen(
+          alarmId: alarm['id'] as int,
+          message: alarm['message'] as String,
+        ),
+      ),
+    );
+    _isShowingAlert = false;
   }
 
   void _simulateIncomingAlarm() {
@@ -88,6 +108,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  Future<void> _updateFloor() async {
+    final floor = int.tryParse(_floorController.text.trim());
+    if (floor == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nomor lantai harus berupa angka.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSavingFloor = true;
+    });
+
+    final result = await _apiService.updateFloor(floor: floor);
+
+    if (!mounted) return;
+    setState(() {
+      _isSavingFloor = false;
+    });
+
+    if (result['success']) {
+      setState(() {
+        _userFloor = floor.toString();
+        _floorController.text = _userFloor;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'])),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']),
+          backgroundColor: const Color(0xFFDC1010),
+        ),
+      );
+    }
   }
 
   @override
@@ -303,7 +361,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       // ==================== TAB 1 & 2: SCREEN LAINNYA ====================
       const Center(child: Text("Ini Halaman Jalur Evakuasi", style: TextStyle(fontSize: 18))),
-      const Center(child: Text("Ini Halaman Profil Pengguna", style: TextStyle(fontSize: 18))),
+      SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Profil Pengguna',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColorHex,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Data profil lain dikelola admin. Dari mobile, Anda hanya bisa memperbarui nomor lantai.',
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(12),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Nama: $_userName',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColorHex,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Lantai saat ini: $_userFloor',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: _floorController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Nomor lantai',
+                        prefixIcon: Icon(Icons.business_outlined, color: primaryColorHex),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _isSavingFloor ? null : _updateFloor,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColorHex,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isSavingFloor
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Simpan Nomor Lantai',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     ];
 
     return Scaffold(

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
 import 'dashboard_screen.dart';
@@ -25,64 +24,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true; // State toggle pengingat password aman
   bool _isLoading = false;
 
-  // void _submit() async {
-  //   if (_formKey.currentState!.validate()) {
-  //     _formKey.currentState!.save();
-  //     setState(() {
-  //       _isLoading = true;
-  //     });
-
-  //     String fcmToken;
-  //     if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) {
-  //       fcmToken = 'mock-fcm-token-web-${DateTime.now().millisecondsSinceEpoch}';
-  //     } else {
-  //       try {
-  //         fcmToken = await FirebaseMessaging.instance.getToken() ??
-  //             'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
-  //       } catch (_) {
-  //         fcmToken = 'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
-  //       }
-  //     }
-
-  //     // Mengirim data register beserta password baru ke server
-  //     final result = await _apiService.registerUser(
-  //       name: _name,
-  //       phone: _phone,
-  //       password: _password, // Tambahan parameter password
-  //       floor: _floor,
-  //       disabilityType: _disabilityType,
-  //       fcmToken: fcmToken,
-  //     );
-
-  //     setState(() {
-  //       _isLoading = false;
-  //     });
-
-  //     if (result['success']) {
-  //       int userId = result['data']['id'];
-        
-  //       SharedPreferences prefs = await SharedPreferences.getInstance();
-  //       await prefs.setInt('user_id', userId);
-  //       await prefs.setString('user_name', _name);
-  //       await prefs.setString('admin_status', 'pending');
-
-  //       if (!mounted) return;
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(builder: (context) => const DashboardScreen()),
-  //       );
-  //     } else {
-  //       if (!mounted) return;
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text(result['message']),
-  //           backgroundColor: const Color(0xFFDC1010),
-  //         ),
-  //       );
-  //     }
-  //   }
-  // }
-
   void _submit() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -90,26 +31,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _isLoading = true;
       });
 
-      // --- MOCK / BYPASS SEMENTARA TANPA BACKEND ---
-      await Future.delayed(const Duration(milliseconds: 500)); // Simulasi loading sebentar
-      
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('user_id', 999); // ID dummy
-      await prefs.setString('user_name', _name);
-      await prefs.setString('admin_status', 'safe'); // Diubah ke 'safe' agar langsung aktif jika dibutuhkan di dashboard
+      String fcmToken;
+      if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+        fcmToken = 'mock-fcm-token-web-${DateTime.now().millisecondsSinceEpoch}';
+      } else {
+        try {
+          fcmToken = await FirebaseMessaging.instance.getToken() ??
+              'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
+        } catch (_) {
+          fcmToken = 'mock-fcm-token-${DateTime.now().millisecondsSinceEpoch}';
+        }
+      }
+
+      final result = await _apiService.registerUser(
+        name: _name,
+        phone: _phone,
+        password: _password,
+        floor: _floor,
+        disabilityType: _disabilityType,
+        fcmToken: fcmToken,
+      );
 
       setState(() {
         _isLoading = false;
       });
 
-      if (!mounted) return;
-      
-      // Langsung arahkan ke DashboardScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-      );
-      // --------------------------------------------
+      if (result['success']) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: const Color(0xFFDC1010),
+          ),
+        );
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/alert_device_service.dart';
 import '../services/api_service.dart';
 
 class AlertScreen extends StatefulWidget {
@@ -14,8 +15,10 @@ class AlertScreen extends StatefulWidget {
 
 class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
+  final AlertDeviceService _alertDeviceService = AlertDeviceService();
   bool _isLoading = false;
   bool _isConfirmed = false;
+  bool _isAlertModeActive = false;
   late AnimationController _animationController;
 
   @override
@@ -25,12 +28,25 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
+    _activateAlertMode();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _restoreAlertMode();
     super.dispose();
+  }
+
+  Future<void> _activateAlertMode() async {
+    _isAlertModeActive = true;
+    await _alertDeviceService.activateAlertMode();
+  }
+
+  Future<void> _restoreAlertMode() async {
+    if (!_isAlertModeActive) return;
+    _isAlertModeActive = false;
+    await _alertDeviceService.restoreAlertMode();
   }
 
   Future<void> _submitStatus(String status) async {
@@ -63,6 +79,7 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
     });
 
     if (result['success']) {
+      await _restoreAlertMode();
       setState(() {
         _isConfirmed = true;
       });
@@ -79,6 +96,7 @@ class _AlertScreenState extends State<AlertScreen> with SingleTickerProviderStat
       });
     } else {
       if (result['message'] != null && result['message'].toString().contains('sudah memberikan konfirmasi')) {
+         await _restoreAlertMode();
          setState(() { _isConfirmed = true; });
          if (!mounted) return;
          Navigator.pop(context);

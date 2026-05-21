@@ -1,15 +1,61 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Gunakan 10.0.2.2 untuk Android Emulator
-  // Gunakan 192.168.0.109 untuk HP fisik (IP lokal PC Anda di jaringan Wi-Fi yang sama)
-  // Gunakan 127.0.0.1 untuk Web/Chrome
   static String get baseUrl {
+    const overrideUrl = String.fromEnvironment('SAFEALERT_API_URL');
+    if (overrideUrl.isNotEmpty) return overrideUrl;
+
     if (kIsWeb) return 'http://127.0.0.1:8089/api';
-    // Ganti ke 'http://192.168.0.109:8089/api' jika menggunakan HP fisik
+    // Android emulator maps host machine localhost to 10.0.2.2.
     return 'http://10.0.2.2:8089/api';
+  }
+
+  Future<Map<String, String>> _headers({bool withAuth = false}) async {
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    if (withAuth) {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    return headers;
+  }
+
+  Map<String, dynamic> _decodeResponse(http.Response response) {
+    if (response.body.isEmpty) return {};
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<void> _saveSession(Map<String, dynamic> responseData) async {
+    final data = (responseData['data'] ?? responseData) as Map<String, dynamic>;
+    final tokens = responseData['tokens'] as Map<String, dynamic>?;
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setInt('user_id', data['id'] as int);
+    await prefs.setString('user_name', (data['name'] ?? 'Pengguna').toString());
+    await prefs.setString(
+      'admin_status',
+      (data['admin_status'] ?? 'active').toString(),
+    );
+    await prefs.setString('user_floor', (data['floor'] ?? '').toString());
+
+    if (tokens != null) {
+      await prefs.setString('access_token', (tokens['access'] ?? '').toString());
+      await prefs.setString(
+        'refresh_token',
+        (tokens['refresh'] ?? '').toString(),
+      );
+    }
   }
 
   Future<Map<String, dynamic>> registerUser({
@@ -20,75 +66,33 @@ class ApiService {
     required String disabilityType,
     required String fcmToken,
   }) async {
-    final url = Uri.parse('$baseUrl/auth/register/');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name,
-        'phone': phone,
-        'password': password,
-        'floor': floor,
-        'disability_type': disabilityType,
-        'fcm_token': fcmToken,
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      return {'success': true, 'data': data};
-    } else {
-      final data = jsonDecode(response.body);
-      return {
-        'success': false,
-        'message': data['message'] ?? 'Terjadi kesalahan',
-      };
-    }
-  }
-
-  Future<Map<String, dynamic>> sendConfirmation({
-    required int alarmId,
-    required int userId,
-    required String status,
-  }) async {
-    final url = Uri.parse('$baseUrl/confirm/');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'alarm_id': alarmId,
-        'user_id': userId,
-        'user_reported_status': status,
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      return {'success': true};
-    } else {
-      final data = jsonDecode(response.body);
-      return {
-        'success': false,
-        'message': data['message'] ?? 'Terjadi kesalahan',
-      };
-    }
-  }
-
-  // Polling check for active alarm
-  Future<Map<String, dynamic>?> checkActiveAlarm() async {
-    // Membutuhkan endpoint khusus untuk public alarm jika ada
-    // Saat ini, backend memerlukan IsAuthenticated untuk '/api/alarms/' yang admin-only
-    // Untuk simulasi MVP tanpa notif FCM:
-    // Kita asumsikan ada endpoint ini atau gunakan data mock jika gagal
     try {
-      final url = Uri.parse('$baseUrl/alarms/active/'); // Contoh jika nanti ada
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register/'),
+        headers: await _headers(),
+        body: jsonEncode({
+          'name': name,
+          'phone': phone,
+          'password': password,
+          'floor': floor,
+          'disability_type': disabilityType,
+          'fcm_token': fcmToken,
+        }),
+      );
+      final responseData = _decodeResponse(response);
+
+      if (response.statusCode == 201) {
+        await _saveSession(responseData);
+        return {'success': true, 'data': responseData['data']};
       }
+
+      return {
+        'success': false,
+        'message': responseData['message'] ?? 'Registrasi gagal',
+      };
     } catch (e) {
-      // Ignore
+      return {'success': false, 'message': 'Gagal terhubung ke server: $e'};
     }
-    return null;
   }
 
   Future<Map<String, dynamic>> loginUser({
@@ -98,35 +102,111 @@ class ApiService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse(
-          '$baseUrl/login',
-        ), // Sesuaikan dengan endpoint login dari backend/web kalian
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        Uri.parse('$baseUrl/auth/login/'),
+        headers: await _headers(),
         body: jsonEncode({
           'phone': phone,
-          'fcm_token':
-              fcmToken, // Dikirim ulang agar jika ganti HP, token di DB ikut terupdate
+          'password': password,
+          'fcm_token': fcmToken,
         }),
       );
-
-      final responseData = jsonDecode(response.body);
+      final responseData = _decodeResponse(response);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        await _saveSession(responseData);
         return {
           'success': true,
           'data': responseData['data'] ?? responseData,
           'message': 'Login berhasil',
         };
-      } else {
+      }
+
+      return {
+        'success': false,
+        'message': responseData['message'] ?? 'Nomor HP atau password salah.',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> sendConfirmation({
+    required int alarmId,
+    required int userId,
+    required String status,
+  }) async {
+    final normalizedStatus = status == 'evacuating' ? 'needs_help' : status;
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/confirmations/confirm_status/'),
+        headers: await _headers(withAuth: true),
+        body: jsonEncode({
+          'alert_id': alarmId,
+          'status': normalizedStatus,
+        }),
+      );
+      final responseData = _decodeResponse(response);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': responseData};
+      }
+
+      return {
+        'success': false,
+        'message': responseData['error'] ??
+            responseData['message'] ??
+            'Terjadi kesalahan',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>?> checkActiveAlarm() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/alerts/active_alerts/'),
+        headers: await _headers(withAuth: true),
+      );
+
+      if (response.statusCode == 200) {
+        final alerts = jsonDecode(response.body) as List<dynamic>;
+        if (alerts.isEmpty) return null;
+        final alert = alerts.first as Map<String, dynamic>;
         return {
-          'success': false,
-          'message':
-              responseData['message'] ?? 'Nomor HP tidak terdaftar atau salah.',
+          'id': alert['id'],
+          'message': alert['description'] ?? alert['title'] ?? 'EVAKUASI SEKARANG!',
         };
       }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>> updateFloor({required int floor}) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/users/update_floor/'),
+        headers: await _headers(withAuth: true),
+        body: jsonEncode({'floor': floor}),
+      );
+      final responseData = _decodeResponse(response);
+
+      if (response.statusCode == 200) {
+        await _saveSession(responseData);
+        return {
+          'success': true,
+          'data': responseData['data'],
+          'message': responseData['message'] ?? 'Nomor lantai berhasil diperbarui.',
+        };
+      }
+
+      return {
+        'success': false,
+        'message': responseData['message'] ?? 'Gagal memperbarui nomor lantai.',
+      };
     } catch (e) {
       return {'success': false, 'message': 'Gagal terhubung ke server: $e'};
     }
