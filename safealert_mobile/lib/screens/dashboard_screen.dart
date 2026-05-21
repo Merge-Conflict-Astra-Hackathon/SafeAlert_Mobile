@@ -40,7 +40,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _userName = prefs.getString('user_name') ?? 'User';
-      // Mengambil status admin, jika kosong set default ke safe agar sesuai mockup gambar kedua
       _adminStatus = prefs.getString('admin_status') ?? 'safe';
       _userFloor = prefs.getString('user_floor') ?? '7'; 
     });
@@ -93,6 +92,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     const Color primaryColorHex = Color(0xFF282E58);
+    const Color secondaryColorHex = Color(0xFFBED0E5);
     const Color fireCallColor = Color(0xFFBA3525); // Warna tombol 113
     const Color policeCallColor = Color(0xFF2545BA); // Warna tombol 110
 
@@ -210,51 +210,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
               
               const SizedBox(height: 40),
               
-              // ─── TOMBOL EMERGENCY CALLS ───
-              Row(
-                children: [
-                  // Tombol Pemadam Kebakaran (113)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Tambahkan fungsi launchUrl('tel:113') nanti jika package url_launcher dipasang
-                      },
-                      icon: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 22),
-                      label: const Text(
-                        'Panggil 113\n(Pemadam)',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: fireCallColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 2,
+              // ─── TOMBOL EMERGENCY CALLS (TEKS 2 UKURAN BERBEDA) ───
+              // Tombol Pemadam Kebakaran (Row 1)
+              ElevatedButton(
+                onPressed: null, // Placeholder semata
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.all(fireCallColor),
+                  padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 14)),
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Hubungi 113',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold, 
+                        color: Colors.white, 
+                        fontSize: 28, // Ukuran nomor lebih besar & tebal
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Tombol Kepolisian (110)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Tambahkan fungsi launchUrl('tel:110')
-                      },
-                      icon: const Icon(Icons.local_police_rounded, color: Colors.white, size: 22),
-                      label: const Text(
-                        'Panggil 110\n(Polisi)',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: policeCallColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 2,
+                    SizedBox(height: 2),
+                    Text(
+                      '(Petugas Pemadam Kebakaran)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500, 
+                        color: Colors.white, 
+                        fontSize: 14, // Ukuran deskripsi lebih kecil
                       ),
                     ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Tombol Kepolisian (Row 2)
+              ElevatedButton(
+                onPressed: null, // Placeholder semata
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.all(policeCallColor),
+                  padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 14)),
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                ],
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Hubungi 110',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold, 
+                        color: Colors.white, 
+                        fontSize: 28, // Ukuran nomor lebih besar & tebal
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      '(Petugas Kepolisian)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500, 
+                        color: Colors.white, 
+                        fontSize: 14, // Ukuran deskripsi lebih kecil
+                      ),
+                    ),
+                  ],
+                ),
               ),
               
               const SizedBox(height: 40),
@@ -307,8 +331,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50, // Latar belakang abu-abu terang bersih mewah
-      // appBar dihapus sepenuhnya agar bagian atas bersih tanpa teks & tombol logout
+      backgroundColor: Colors.grey.shade50, 
       body: pages[_selectedIndex],
       
       // BOTTOM NAVIGATION BAR
@@ -318,37 +341,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: BorderSide(color: Colors.grey.shade200, width: 1.5),
           ),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          backgroundColor: Colors.white,
-          selectedItemColor: primaryColorHex,
-          unselectedItemColor: Colors.grey.shade500,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.normal,
-            fontSize: 12,
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            backgroundColor: Colors.white,
+            selectedItemColor: primaryColorHex,
+            unselectedItemColor: secondaryColorHex,
+            type: BottomNavigationBarType.fixed,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.normal,
+              fontSize: 12,
+            ),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home_rounded),
+                label: 'Beranda',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.directions_run_rounded), 
+                label: 'Evakuasi',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline_rounded),
+                activeIcon: Icon(Icons.person_rounded),
+                label: 'Profil',
+              ),
+            ],
           ),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Beranda',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.directions_run_rounded), 
-              label: 'Evakuasi',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profil',
-            ),
-          ],
         ),
       ),
     );
