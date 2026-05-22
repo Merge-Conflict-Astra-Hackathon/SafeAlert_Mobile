@@ -6,6 +6,7 @@ Aplikasi Flutter SafeAlert untuk user menerima alarm darurat, mengirim status ev
 
 - Backend production: https://safealertweb-production.up.railway.app/
 - API base URL: https://safealertweb-production.up.railway.app/api
+- Bitrise public install page: https://app.bitrise.io/app/5b53d64f-d036-4741-b0c4-84890afc5504/installable-artifacts/c39f30380d1c96a7/public-install-page/645575981041baa7239134bb1c260161
 
 ## Stack
 
